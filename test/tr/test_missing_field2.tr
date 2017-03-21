@@ -1,0 +1,23 @@
+foreach %aeid in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid, segment_eid = %s -> yield $match
+            * -> repeat
+
+
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":1000000, "advertisable_eid" : "a1"}
+--                    ]}],
+--         "expected" : [
+--                      {"%aeid" : "a1", "$match" : 0},
+--                      {"%aeid" : "a2", "$match" : 0},
+--                      {"%aeid" : "a3", "$match" : 0}
+--                     ]
+--     }
+-- ],
+-- "params" : {"@arr" : [["a1"], ["a2"], ["a3"]], "%s" : "123"}
+-- }

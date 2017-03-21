@@ -1,0 +1,47 @@
+{
+  "rules" : [
+        {  "window": 100000000,
+           "clauses" : [
+                        {"attrs":{"type":["pxl"]}, "action" : "break" },
+                        {"attrs":{}, "action" : "repeat" }
+                      ]
+        },
+        { "window": 1000,
+           "clauses" : [
+                        {"attrs":{"type":["pxl"]}, "op" : "not", "action" : "repeat"},
+                        {"attrs":{}, "action" : "restart-from-here"}
+           ],
+           "after":{"action":"restart-from-here", "yield" : [{"dst":"$matches"}]}
+        }
+    ],
+  "tests" : [
+      {
+        "trails" : [{"abcd" : [
+                            {"type":"imp", "timestamp":200, "campaign_eid":"A"},
+                            {"type":"imp", "timestamp":300},
+                            {"type":"imp", "timestamp":400},
+                            {"type":"imp", "timestamp":500}
+                     ]}],
+        "expected" :
+              {"$matches" : 0}
+      },
+
+      {
+        "trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":200, "campaign_eid":"A"},
+                         {"type":"pxl", "timestamp":300},
+                         {"type":"pxl", "timestamp":400},
+                         {"type":"pxl", "timestamp":500}
+                        ]}],
+        "expected" : {"$matches" : 1}
+      },
+      {
+        "trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":0, "campaign_eid":"A"},
+                         {"type":"imp", "timestamp":3000}
+                  ]}],
+        "expected" : {"$matches" : 1}
+      }
+    ]
+}
+

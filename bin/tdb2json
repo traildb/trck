@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+
+import sys
+from traildb import TrailDB
+import json
+
+if __name__ == '__main__':
+    tdb_path = sys.argv[1]
+    tdb = TrailDB(tdb_path)
+    res = {}
+
+    def tod(e):
+        """ gotta rename "time"->"timestamp" """
+        res = e._asdict()
+        res['timestamp'] = res['time']
+        del res['time']
+        return res
+
+    for cookie, trail in tdb.crumbs():
+        res[cookie.decode('hex')] = [tod(e) for e in trail]
+    print json.dumps(res)

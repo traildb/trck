@@ -1,0 +1,51 @@
+{
+  "rules" : [
+        {  "window": 100000000,
+           "clauses" : [
+                        {"attrs":{"type":["pxl"]}, "action" : "stop" },
+                        {"attrs":{"type":["imp"]}, "action" : "break" },
+                        {"attrs":{}, "action" : "repeat" }
+                      ]
+        },
+        { "window": 1000,
+           "clauses" : [
+                        {"attrs":{"type":["cli"]}, "action" : "stop", "yield" : [{"dst":"$clicks"}]},
+                        {"attrs":{}, "action" : "repeat"}
+           ],
+           "after" : {"action" : "stop"}
+        }
+    ],
+  "tests" : [
+      {
+          "trails" : [
+                         {"cookie1" : [{"type":"pxl", "timestamp":200},
+                                       {"type":"imp", "timestamp":300}]},
+                         {"cookie1" : [{"type":"cli", "timestamp":400},
+                                       {"type":"imp", "timestamp":500}]}
+                     ],
+          "expected" :
+              {"$clicks" : 0}
+      },
+      {
+            "trails" : [
+                         {"cookie1" : [{"type":"pxl", "timestamp":200},
+                                       {"type":"pxl", "timestamp":300}]},
+                         {"cookie1" : [{"type":"imp", "timestamp":400},
+                                       {"type":"cli", "timestamp":500},
+                                       {"type":"cli", "timestamp":600}]}
+                        ],
+            "expected" : {"$clicks" : 0}
+      },
+      {
+            "trails" : [
+                         {"cookie1" : [{"type":"imp", "timestamp":200},
+                                       {"type":"pxl", "timestamp":300}]},
+                         {"cookie1" : [{"type":"imp", "timestamp":400},
+                                       {"type":"cli", "timestamp":500},
+                                       {"type":"cli", "timestamp":600}]}
+                        ],
+            "expected" : {"$clicks" : 1}
+      }
+    ]
+}
+

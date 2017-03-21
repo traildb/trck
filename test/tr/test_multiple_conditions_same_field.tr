@@ -1,0 +1,28 @@
+foreach %aeid,#seids1,#seids2 in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid=%aeid, segment_eid in #seids1, segment_eid in #seids2 -> yield $match_both
+            type = "cli", advertisable_eid=%aeid, segment_eid in #seids1 -> yield $match_first
+            type = "cli", advertisable_eid=%aeid, segment_eid in #seids2 -> yield $match_second
+            * -> repeat
+
+
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0, "advertisable_eid":"a1", "segment_eid" : "s111"},
+--                      {"type":"cli", "timestamp":1, "advertisable_eid":"a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":2, "advertisable_eid":"a1", "segment_eid" : "s121"},
+--                      {"type":"cli", "timestamp":3, "advertisable_eid":"a1", "segment_eid" : "s1"}
+--                    ]}],
+--         "expected" : [
+--                      {"%aeid" : "a1", "#seids1" : ["s111", "s112", "s1"], "#seids2" : ["s121", "s122", "s1"], "$match_both" : 2, "$match_first" : 1, "$match_second" : 1}
+--                     ]
+--     }
+-- ],
+-- "params" : {"@arr" : [["a1", ["s111", "s112", "s1"], ["s121", "s122", "s1"]],
+--                       ["a2", ["s211", "s212"], ["s221", "s222"]],
+--                       ["a3", ["s311", "s312"], ["s321", "s322"]]]}
+-- }

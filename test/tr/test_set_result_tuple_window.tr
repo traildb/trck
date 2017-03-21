@@ -1,0 +1,54 @@
+foreach %aeid in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid -> outer_window
+            * -> repeat
+    outer_window ->
+        window
+            inner_window ->
+                receive
+                    type = "imp" -> yield $match, yield start_timestamp[outer_window] to #baz, inner_window_2
+                    * -> repeat
+                after 10m -> inner_window_2
+
+            inner_window_2 ->
+                receive
+                    type = "imp" -> yield $match, inner_window_3
+                    * -> repeat
+            inner_window_3 ->
+                window
+                    inner_inner ->
+                        receive
+                            type = "imp" -> yield $match, yield start_timestamp[inner_window_3] to #foo, yield start_timestamp to #own, repeat
+                            * -> repeat
+                        after 100s -> start
+                after 800s -> start
+        after 300s -> start
+
+
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1"},
+--                      {"type":"imp", "timestamp":100, "advertisable_eid" : "a1"}
+--                    ]}],
+--         "expected" : [
+--                      {"%aeid" : "a1", "$match" : 1, "#baz" : ["0"], "#foo" : [], "#own" : []}
+--                     ]
+--     },
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1"},
+--                      {"type":"imp", "timestamp":100, "advertisable_eid" : "a1"},
+--                      {"type":"imp", "timestamp":150, "advertisable_eid" : "a1"},
+--                      {"type":"imp", "timestamp":200, "advertisable_eid" : "a1"}
+--                    ]}],
+--         "expected" : [
+--                      {"%aeid" : "a1", "$match" : 3, "#baz" : ["0"], "#foo" : ["150"], "#own" : ["150"]}
+--                     ]
+--     }
+-- ],
+-- "params" : {"@arr" : [["a1"]]}
+-- }

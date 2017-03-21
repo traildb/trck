@@ -1,0 +1,39 @@
+foreach %aeid in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid -> outer_window
+            * -> repeat
+    outer_window ->
+        window
+            inner_window ->
+                receive
+                    type = "imp" -> inner_window_2
+                    * -> repeat
+
+            inner_window_2 ->
+                receive
+                    type = "imp", advertisable_eid = %aeid -> yield $match, yield start_timestamp[outer_window] to #foo, repeat
+                    * -> repeat
+        after 30d -> start
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "desc" : "Test for state RLE bug when outer window start timestamp wasn't considered part of the state and states were erroneously collapsed",
+--         "trails" : [{"abcd0" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":1,   "advertisable_eid" : "a2"},
+--                      {"type":"imp", "timestamp":6,   "advertisable_eid" : "foo"}
+--                    ]},
+--                    {"abcd0" : [
+--                      {"type":"imp", "timestamp":100, "advertisable_eid" : "a1"},
+--                      {"type":"imp", "timestamp":101, "advertisable_eid" : "a2"}
+--                    ]}],
+--         "expected" : [
+--                      {"%aeid" : "a1", "$match" : 1, "#foo" : ["0"]},
+--                      {"%aeid" : "a2", "$match" : 1, "#foo" : ["1"]}
+--                     ]
+--     }
+-- ],
+-- "params" : {"@arr" : [["a1"], ["a2"]]}
+-- }

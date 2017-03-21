@@ -1,0 +1,81 @@
+{
+  "rules" : [
+
+ { "window":100,
+   "clauses": [
+                {"attrs":{"type":["pxl"]}, "op":"not", "action" : "repeat" },
+                {"attrs":{}, "action" : "restart-from-next" }
+              ],
+   "after" : {"action" : "break"}
+ },
+ { "window":1000000,
+   "entrypoint":true,
+   "clauses": [
+                {"attrs":{"type":["imp"], "campaign_eid":["A"]}, "action" : "break" },
+                {"attrs":{"type":["pxl"]}, "op":"not", "action" : "repeat" },
+                {"attrs":{"type":["pxl"]}, "action" : "restart-from-next(0)" }
+              ]
+ },
+ { "window":1000,
+   "clauses": [
+                {"attrs":{"type":["imp"]}, "action" : "break" },
+                {"attrs":{}, "action" : "repeat" }
+              ]
+ },
+ { "window":1000,
+   "clauses": [
+                {"attrs":{"type":["ct2"]}, "action" : "repeat", "yield": [{"dst":"$conversion"}] },
+                {"attrs":{"type":["vt2"]}, "action" : "repeat", "yield": [{"dst":"$conversion"}] },
+                {"attrs":{}, "action" : "repeat" }
+              ]
+ }
+],
+  "tests" : [
+      {
+        "trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":0},
+                         {"type":"imp", "timestamp":100},
+                         {"type":"imp", "timestamp":200, "campaign_eid":"A"},
+                         {"type":"pxl", "timestamp":300},
+                         {"type":"imp", "timestamp":400},
+                         {"type":"ct2", "timestamp":500}
+                    ]}],
+        "expected" :
+              {"$conversion" : 1}
+      },
+      {
+        "trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":0},
+                         {"type":"imp", "timestamp":100},
+                         {"type":"imp", "timestamp":200, "campaign_eid":"A"},
+                         {"type":"pxl", "timestamp":300},
+                         {"type":"imp", "timestamp":400},
+                         {"type":"ct2", "timestamp":500},
+                         {"type":"vt2", "timestamp":600}
+                  ]}],
+        "expected" : {"$conversion" : 2}
+      },
+      {
+        "comment" : "this has less than 100s between pxl and imp with campaign = A therefore it shouldn't match",
+        "trails" : [{"abcd" : [
+                         {"type":"pxl","timestamp":110},
+                         {"type":"imp","timestamp":130},
+                         {"type":"imp", "timestamp":200, "campaign_eid":"A"},
+                         {"type":"pxl", "timestamp":300},
+                         {"type":"imp", "timestamp":400},
+                         {"type":"ct2", "timestamp":500}
+                  ]}],
+        "expected" : {"$conversion" : 0}
+      },
+      {
+        "comment": "rules require at least 100s with no pxl before imp with campaign = A this has no pxl before that imp at all, and should also match",
+        "trails" : [{"abcd" : [
+                         {"type":"imp", "timestamp":200, "campaign_eid":"A"},
+                         {"type":"pxl", "timestamp":300},
+                         {"type":"imp", "timestamp":400},
+                         {"type":"ct2", "timestamp":500}
+                    ]}],
+        "expected" : {"$conversion" : 1}
+      }
+  ]
+}

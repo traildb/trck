@@ -1,0 +1,30 @@
+foreach %aeid in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid -> yield cookie, yay, type to #trails, yield $match
+            * -> repeat
+
+
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":100, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":200, "advertisable_eid" : "a2"},
+--                      {"type":"cli", "timestamp":300, "advertisable_eid" : "a2"},
+--                      {"type":"cli", "timestamp":400, "advertisable_eid" : "a3"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a3"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a2"}
+--                    ]}],
+--         "expected" : [
+--                      {"%aeid" : "a1", "$match" : 2, "#trails" : ["61626364000000000000000000000000,,cli"]},
+--                      {"%aeid" : "a2", "$match" : 4, "#trails" : ["61626364000000000000000000000000,,cli"]},
+--                      {"%aeid" : "a3", "$match" : 2, "#trails" : ["61626364000000000000000000000000,,cli"]}
+--                     ]
+--     }
+-- ],
+-- "params" : {"@arr" : [["a1"], ["a2"], ["a3"]]}
+-- }

@@ -1,0 +1,38 @@
+foreach %f in @fields
+    prefilter ->
+        receive
+            type = "cli" -> main
+            * -> repeat
+    main ->
+        receive
+            type = "imp", field1 = %f -> yield $match, repeat
+            * -> repeat
+
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "trails" : [
+--                     {"abcd" : [
+--                      {"type":"cli", "timestamp":1}
+--                     ]},
+--                     {"abcd" : [
+--                      {"type":"imp", "timestamp":2, "field1" : "val2"},
+--                      {"type":"imp", "timestamp":3, "field1" : "val1"}
+--                     ]},
+--                     {},
+--                     {"abcd" : [
+--                      {"type":"imp", "timestamp":4, "field1" : "val2"},
+--                      {"type":"imp", "timestamp":5, "field1" : "val1"}
+--                     ]}
+--                    ],
+--         "expected" :
+--                  [
+--                  { "$match": 2, "%f": "val1" },
+--                  { "$match": 2, "%f": "val2" },
+--                  { "$match": 0, "%f": "val3" }]
+--
+--     }
+-- ],
+-- "params" : {"@fields" : [["val1"], ["val2"], ["val3"]]}
+-- }

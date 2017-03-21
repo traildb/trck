@@ -1,0 +1,9 @@
+[submodule "deps/traildb-python"]
+    path = deps/traildb-python
+    url = https://github.com/traildb/traildb-python.git
+[submodule "traildb"]
+	path = deps/traildb
+	url = https://github.com/traildb/traildb.git 
+[submodule "deps/msgpack-c"]
+	path = deps/msgpack-c
+	url = https://github.com/msgpack/msgpack-c.git

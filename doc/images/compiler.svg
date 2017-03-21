@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<svg width="284" height="241" xmlns="http://www.w3.org/2000/svg">
+ <!-- Created with Method Draw - http://github.com/duopixel/Method-Draw/ -->
+ <g>
+  <title>background</title>
+  <rect fill="none" id="canvas_background" height="243" width="286" y="-1" x="-1"/>
+  <g display="none" overflow="visible" y="0" x="0" height="100%" width="100%" id="canvasGrid">
+   <rect fill="url(#gridpattern)" stroke-width="0" y="0" x="0" height="100%" width="100%"/>
+  </g>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect stroke="#000" id="svg_1" height="37.000002" width="111.000005" y="7" x="8.5" stroke-width="1.5" fill="none"/>
+  <text font-style="italic" xml:space="preserve" text-anchor="left" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_2" y="32" x="14.5" stroke-width="0" stroke="#000" fill="#000000">program (.tr)</text>
+  <rect stroke="#000" id="svg_3" height="37.000002" width="111.000005" y="67" x="9.5" stroke-width="1.5" fill="none"/>
+  <text font-style="italic" xml:space="preserve" text-anchor="left" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_4" y="92" x="34.5" stroke-width="0" stroke="#000" fill="#000000">JSON</text>
+  <rect stroke="#000" id="svg_5" height="37.000002" width="111.000005" y="127" x="8.5" stroke-width="1.5" fill="none"/>
+  <text font-style="italic" xml:space="preserve" text-anchor="left" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_6" y="151" x="33.5" stroke-width="0" stroke="#000" fill="#000000">C code</text>
+  <rect stroke="#000" id="svg_8" height="37.000002" width="142.000001" y="127" x="134.5" stroke-width="1.5" fill="none"/>
+  <text font-style="italic" xml:space="preserve" text-anchor="left" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_9" y="151" x="144.5" stroke-width="0" stroke="#000" fill="#000000">match_traildb.c</text>
+  <rect stroke="#000" id="svg_11" height="37.000002" width="111.000005" y="198" x="71.5" stroke-width="1.5" fill="none"/>
+  <text font-style="italic" xml:space="preserve" text-anchor="left" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_12" y="222" x="83.5" stroke-width="0" stroke="#000" fill="#000000">executable</text>
+  <path stroke="#000" transform="rotate(180 64.84500122070312,55.603202819824226) " id="svg_14" d="m52.845001,55.576851l12,-10.973648l12,10.973648l-6.000732,0l0,11.026352l-11.999268,0l0,-11.026352l-6,0z" stroke-opacity="null" stroke-width="1.5" fill="none"/>
+  <path stroke="#000" transform="rotate(180 64.84500122070312,115.60321044921875) " id="svg_15" d="m52.845001,115.576843l12,-10.973633l12,10.973633l-6.000732,0l0,11.026367l-11.999268,0l0,-11.026367l-6,0z" stroke-opacity="null" stroke-width="1.5" fill="none"/>
+  <path transform="rotate(90 126.9221954345703,180.69885253906253) " id="svg_16" d="m139.728149,174.633667l-4.191254,-6.067413l0,6.751556l-7.522339,0c-1.316986,0.246033 -3.590881,-3.498413 -6.119507,-8.467499c-2.545776,-4.713394 -5.455719,-10.496704 -9.351624,-10.651474l-2.621246,0l0,10.763596l2.621246,0c1.908234,-0.139038 4.26062,3.621796 6.765686,8.474304c0.933929,1.694916 1.875519,3.564911 2.873138,5.253876c-0.99762,1.690521 -1.938171,3.562714 -2.873138,5.257629c-2.505066,4.838928 -4.857452,8.608124 -6.763367,8.472046l-2.623566,0l0,10.778564l2.622284,0c3.887878,-0.135864 6.798615,-5.934906 9.352997,-10.642487c2.528564,-4.969086 4.801422,-8.71579 6.11969,-8.473541l7.519745,0l0,6.751495l4.191254,-6.060638l4.194061,-6.065826l-4.194061,-6.074188l0,0z" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text font-weight="bold" xml:space="preserve" text-anchor="left" font-family="Helvetica, Arial, sans-serif" font-size="14" id="svg_17" y="59" x="84.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">parser.py</text>
+  <text font-weight="bold" xml:space="preserve" text-anchor="left" font-family="Helvetica, Arial, sans-serif" font-size="14" id="svg_18" y="118" x="84.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">fsm2c.py</text>
+  <text font-weight="bold" xml:space="preserve" text-anchor="left" font-family="Helvetica, Arial, sans-serif" font-size="14" id="svg_20" y="183" x="154.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">clang</text>
+ </g>
+</svg>

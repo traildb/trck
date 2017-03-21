@@ -1,0 +1,14 @@
+{
+    "rules" : [
+    {
+        "clauses" : [
+            {"attrs":{"type":["imp"], "adgroup_eid" : ["%adgroup_eid"]}, "action":"stop", "yield":{"dst":"$uniq"}},
+            {"attrs":{}, "action":"repeat"}
+        ],
+        "after" : {"action" : "stop"}
+    }
+    ],
+    "groupby" : {"vars" : [ "%adgroup_eid" ] },
+    "tests" : [
+    ]
+}

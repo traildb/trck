@@ -1,0 +1,119 @@
+foreach %aeid in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid -> yield $match, yield timestamp to #timestamps
+            type = "ttt" -> yield cookie,cookie_timestamp_filter_end,cookie_timestamp_filter_start to &ttt
+            * -> repeat
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "desc" : "Test per-cookie windows on cookie trail spanning three traildbs",
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":100, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":200, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":300, "advertisable_eid" : "a1"}
+--                    ]},
+--                     {"abcd" : [
+--                      {"type":"cli", "timestamp":400, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":450, "advertisable_eid" : "a1"}
+--                    ]},
+--                     {"abcd" : [
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 5, "#timestamps" : ["200", "300", "400", "450", "500"], "&ttt" : {}}]
+--     },
+--     {
+--         "desc" : "Test per-cookie windows on cookie trail spanning two traildbs + empty traildb",
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":100, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":200, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":300, "advertisable_eid" : "a1"}
+--                    ]},
+--                     {"abcd" : [
+--                      {"type":"cli", "timestamp":400, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":450, "advertisable_eid" : "a1"}
+--                    ]},
+--                     {"defg" : []}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 4, "#timestamps" : ["200", "300", "400", "450"], "&ttt" : {}}]
+--     },
+--     {
+--         "desc" : "Test per-cookie windows with multiple cookies",
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":10,  "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":210, "advertisable_eid" : "a1"}],
+---                     "efgh" : [
+--                      {"type":"cli", "timestamp":120, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":320, "advertisable_eid" : "a1"}],
+---                     "ijkl" : [
+--                      {"type":"cli", "timestamp":230, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":430, "advertisable_eid" : "a1"}]
+--                     },
+--                     {"abcd" : [
+--                      {"type":"cli", "timestamp":510, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":610, "advertisable_eid" : "a1"}],
+---                     "efgh" : [
+--                      {"type":"cli", "timestamp":620, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":720, "advertisable_eid" : "a1"}],
+---                     "ijkl" : [
+--                      {"type":"cli", "timestamp":730, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":830, "advertisable_eid" : "a1"}]
+--                    }],
+--         "expected" : [{"%aeid" : "a1", "$match" : 6, "#timestamps" : ["210", "320", "430", "510", "620", "730"], "&ttt" : {}}]
+--     },
+--     {
+--         "desc" : "Test per-cookie windows with multiple cookies, one cookie has no filter set",
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":10,  "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":210, "advertisable_eid" : "a1"}],
+---                     "efgh" : [
+--                      {"type":"cli", "timestamp":120, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":320, "advertisable_eid" : "a1"}],
+---                     "ijkl1" : [
+--                      {"type":"cli", "timestamp":230, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":430, "advertisable_eid" : "a1"}]
+--                     },
+--                     {"abcd" : [
+--                      {"type":"cli", "timestamp":510, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":610, "advertisable_eid" : "a1"}],
+---                     "efgh" : [
+--                      {"type":"cli", "timestamp":620, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":720, "advertisable_eid" : "a1"}],
+---                     "ijkl1" : [
+--                      {"type":"cli", "timestamp":730, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":830, "advertisable_eid" : "a1"}]
+--                    }],
+--         "expected" : [{"%aeid" : "a1", "$match" : 4, "#timestamps" : ["210", "320", "510", "620"], "&ttt" : {}}]
+--     },
+--     {
+--         "desc" : "Test per-cookie windows with a window that filters everything out",
+--         "trails" : [{"mnop" : [
+--                      {"type":"cli", "timestamp":10,  "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":210, "advertisable_eid" : "a1"}]
+--                     },
+--                     {"abcd" : [
+--                      {"type":"cli", "timestamp":1000, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":2100, "advertisable_eid" : "a1"}]
+--                     },
+--                     {"efgh" : [
+--                      {"type":"cli", "timestamp":1, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":2, "advertisable_eid" : "a1"}]
+--                     }],
+--         "expected" : [{"%aeid" : "a1", "$match" : 0, "#timestamps" : [], "&ttt" : {}}]
+--     },
+--     {
+--         "desc" : "Test accessing window bounds in yield (first event filtered out)",
+--         "trails" : [{"abcd" : [
+--                      {"type":"ttt", "timestamp":10,  "advertisable_eid" : "a1"},
+--                      {"type":"ttt", "timestamp":210, "advertisable_eid" : "a1"},
+--                      {"type":"ttt", "timestamp":240, "advertisable_eid" : "a1"}]
+--                     }],
+--         "expected" : [{"%aeid" : "a1", "$match" : 0, "#timestamps" : [], "&ttt" : {"61626364000000000000000000000000,600,200" : 2}}]
+--     }
+-- ],
+-- "params" : {"@arr" : [["a1"]]}
+--}

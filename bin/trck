@@ -1,0 +1,235 @@
+#!/usr/bin/env python
+import sys
+import tempfile
+import os
+import subprocess
+import time
+import argparse
+import json
+import shutil
+
+sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '../src'))
+import trparser
+import fsm2c
+
+def print_(s, level='info'):
+    sys.stdout.write("%s\n" % s)
+
+def make_absolute(x):
+    return os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), x))
+
+LIBS = ["-ltraildb", make_absolute("../lib/libtrck.a"),
+        "-lcmph",
+        "-lm",
+        "-lJudy",
+        "-ltcmalloc",
+        "-lmsgpackc",
+        "-ljson-c"]
+
+FLAGS = ["-std=c99",
+        "-g",
+        "-Wall",
+        "-Wno-unused-variable",
+        "-Wno-unused-label",
+        "-I", make_absolute("../deps/traildb/src/")]
+
+def add_debug_flags(flags):
+    if os.getenv('DEBUG'):
+        flags.append('-DDEBUG=' + os.getenv('DEBUG'))
+    else:
+        flags.append('-O3')
+
+def compiler(use_openmp):
+    if os.getenv('CC'):
+        return os.getenv('CC')
+    elif sys.platform == 'darwin' and use_openmp:
+        return 'clang-omp'
+    else:
+        return 'gcc'
+
+def compile_dynamic(sources, src_path, gen_path, output_file, use_openmp):
+    libs = LIBS[:]
+    flags = FLAGS[:]
+
+    if use_openmp:
+        if sys.platform == 'darwin':
+            libs.append('-liomp5')
+        else:
+            libs.append('-lgomp')
+
+        flags.append('-fopenmp')
+    else:
+        flags.append('-Wno-unknown-pragmas')
+
+    add_debug_flags(flags)
+    return subprocess.call([compiler(use_openmp)] + flags + \
+                           ["-I", gen_path] + \
+                           ["-I", src_path] + \
+                           sources + \
+                           libs + \
+                           ["-o", output_file])
+
+def compile_static(sources, src_path, gen_path, output_file, use_openmp):
+    libs = LIBS[:]
+    flags = FLAGS[:]
+    if use_openmp:
+        libs.append('-lgomp')
+        flags.append('-fopenmp')
+    else:
+        flags.append('-Wno-unknown-pragmas')
+
+    add_debug_flags(flags)
+    # For some reason, when using -static, gcc sets /lib/ld64.so.1 as dynamic
+    # linker. Which is technically correct according to amd64 ABI[1], but linux
+    # prefers it to be set to /lib64/ld-linux-x86-64.so.2
+    #
+    # Therefore, binary produced by -static fails with "No such file or
+    # directory" at least on my ubuntu box. Hence explicit dynamic linker
+    # setting below.
+
+    # [1]http://www.x86-64.org/documentation/abi.pdf
+    args = (flags + \
+           ["-I", gen_path] + \
+           ["-I", src_path] + \
+           sources + \
+           ["-static"] +\
+           libs + \
+           ["-Wl,-I/lib64/ld-linux-x86-64.so.2"] +\
+           ["-Wl,-Bdynamic"] +\
+           ["-o", output_file])
+    return subprocess.call([compiler(use_openmp)] + args)
+
+def check_openmp_linux():
+    from ctypes import CDLL
+    try:
+        CDLL("libgomp.so.1")
+        return True
+    except OSError:
+        return False
+
+def check_openmp_osx():
+    from ctypes import CDLL
+    try:
+        CDLL("libiomp5.dylib")
+        return True
+    except OSError:
+        return False
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("program_name", help="program")
+    parser.add_argument("traildbs", help="traildb paths", metavar="TDB", nargs="*")
+    parser.add_argument("--compile-only", "-c", help="compile only, don't run compiled binary", action='store_true', default=False)
+    parser.add_argument("--gen-c", help="compile to C only", action='store_true', default=False)
+    parser.add_argument("--gen-h", help="compile header only", action='store_true', default=False)
+    parser.add_argument("--output-file", "-o", help="output path for compiled binary", default='matcher-traildb')
+    parser.add_argument("--params-file", "-p", help="path to parameter file")
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--dynamic", action="store_true", help="link dependencies dynamically (default)")
+    group.add_argument("--static", action="store_true", help="link dependencies mostly statically")
+
+    if sys.platform == 'darwin':
+        have_openmp = check_openmp_osx()
+    else:
+        have_openmp = check_openmp_linux()
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--no-openmp", help="do not use openmp", action='store_false', default=have_openmp, dest='use_openmp')
+    group.add_argument("--use-openmp", help="use openmp", action='store_true', default=have_openmp, dest='use_openmp')
+
+    args = parser.parse_args()
+
+    if args.static and sys.platform == 'darwin':
+        print_("Static linking is not supported on OSX, sorry.")
+        sys.exit(1)
+
+    if not args.compile_only and len(args.traildbs) == 0:
+        print_("traildb paths required if not using --compile-only", level='error')
+        print_(parser.format_usage(), level='error')
+        sys.exit(1)
+
+    print_("Compiling %s" % args.program_name)
+    t1 = time.time()
+    try:
+        with open(args.program_name) as f:
+            if args.program_name.endswith('.json'):
+                flat_rules = (json.load(f))
+            else:
+                try:
+                    flat_rules = trparser.compile_tr(f.read())
+                except trparser.ParseError as e:
+                    print >>sys.stderr, "Parsing failed: {}".format(e)
+                    sys.exit(1)
+
+            gen_path = tempfile.mkdtemp()
+            try:
+                if args.gen_c:
+                    fsm2c.compile(flat_rules["rules"],
+                                  includes=['fns_imported.h',
+                                            'out_traildb.h'],
+                                  groupby=flat_rules.get('groupby'),
+                                  out=sys.stdout)
+                    return
+                elif args.gen_h:
+                    fsm2c.gen_header(flat_rules["rules"],
+                                     groupby=flat_rules.get('groupby'),
+                                     out=sys.stdout)
+                else:
+                    with open(os.path.join(gen_path, 'out_traildb.c'), 'w') as c_src:
+                        fsm2c.compile(flat_rules["rules"],
+                                      includes=['fns_imported.h',
+                                                'out_traildb.h'],
+                                      groupby=flat_rules.get('groupby'),
+                                      out=c_src)
+
+                src_path = make_absolute('../src')
+
+                with open(os.path.join(gen_path, 'out_traildb.h'), 'w') as h_src:
+                    fsm2c.gen_header(flat_rules["rules"],
+                                     groupby=flat_rules.get('groupby'),
+                                     out=h_src)
+
+                j = os.path.join
+                sources = [
+                        j(src_path, "match_traildb.c"),
+                        j(src_path, "statevec.c"),
+                        j(gen_path, "out_traildb.c")
+                ]
+
+                if args.static:
+                    compile_method = compile_static
+                else:
+                    compile_method = compile_dynamic
+
+                if os.path.isfile(args.program_name + ".c"):
+                    sources.append(args.program_name + ".c")
+
+                if compile_method(sources, src_path, gen_path, args.output_file, use_openmp=args.use_openmp) != 0:
+                    print_("Compilation failed", level='error')
+                    sys.exit(1)
+            finally:
+                shutil.rmtree(gen_path)
+
+            deltat = time.time() - t1
+            print_("Produced binary in %s in %.2f seconds with %s[%s]" % (args.output_file,
+                                                                         deltat,
+                                                                         compiler(args.use_openmp),
+                                                                         'openmp' if args.use_openmp else 'no openmp'
+                                                                         ),
+                                                                         level='info')
+
+            if not args.compile_only:
+                if args.params_file:
+                    matcher_args = [args.output_file, '--params', args.params_file]
+                else:
+                    matcher_args = [args.output_file]
+                matcher_args.extend(args.traildbs)
+                os.execv(args.output_file, matcher_args)
+
+    except trparser.ParseError as e:
+        print_(e, level='error')
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

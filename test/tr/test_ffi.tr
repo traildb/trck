@@ -1,0 +1,21 @@
+start ->
+    window
+        boo ->
+            receive
+                type = "cli" -> yield foo1(advertisable_eid) to #baz, repeat
+                type = "imp" -> yield cookie,foo(advertisable_eid, "test", "z", 15, timestamp, start_timestamp[start]) to #foo, repeat
+                * -> repeat
+    after 50d -> quit
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":1000000, "advertisable_eid" : "a-1"},
+--                      {"type":"imp", "timestamp":1000001, "advertisable_eid" : "a/2"}
+--                    ]}],
+--         "expected" :
+--                      {"#foo" : ["61626364000000000000000000000000,test"], "#baz": ["test"]}
+--     }
+-- ]
+-- }

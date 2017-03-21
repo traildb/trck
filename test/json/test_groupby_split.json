@@ -1,0 +1,74 @@
+{
+  "rules" : [
+        {  "window": 100000000,
+           "clauses" : [
+                        {"attrs":{"type":["pxl"], "advertisable_eid":["%advertisable_eid"]}, "action" : "break" },
+                        {"attrs":{}, "action" : "repeat" }
+                      ]
+        },
+        { "window": 1000,
+           "clauses" : [
+                        {"attrs":{"type":["imp"], "advertisable_eid":["%advertisable_eid"]}, "action" : "repeat", "yield" : [{"dst":"$imps"}]},
+                        {"attrs":{}, "action" : "repeat"}
+           ],
+           "after":{"action":"restart-from-here"}
+        }
+    ],
+  "groupby" : { "vars" : ["%advertisable_eid"] },
+  "tests" : [
+      {
+          "trails" : [{"abcd" : [
+                         {"type":"imp", "timestamp":200, "advertisable_eid":"A"}]},
+                      {"abcd" : [
+                         {"type":"imp", "timestamp":300, "advertisable_eid":"A"},
+                         {"type":"imp", "timestamp":400, "advertisable_eid":"A"},
+                         {"type":"imp", "timestamp":500, "advertisable_eid":"A"}
+                     ]}],
+          "expected" :
+              [{ "%advertisable_eid" : "A", "$imps" : 0} ]
+      },
+
+      {
+            "trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":200, "advertisable_eid":"A"},
+                         {"type":"imp", "timestamp":300, "advertisable_eid":"A"}]},
+                      {"abcd" : [
+                         {"type":"imp", "timestamp":400, "advertisable_eid":"A"},
+                         {"type":"imp", "timestamp":500, "advertisable_eid":"A"}
+                        ]}],
+          "expected" :
+              [{ "%advertisable_eid" : "A", "$imps" : 3} ]
+      },
+      {
+        "trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":0, "advertisable_eid":"A"}]},
+                      {"abcd" : [
+                         {"type":"imp", "timestamp":300, "advertisable_eid":"A"}
+                  ]}],
+        "expected" :
+              [{ "%advertisable_eid" : "A", "$imps" : 1} ]
+      },
+      {
+          "trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":200, "advertisable_eid":"A"}]},
+                      {"abcd" : [
+                         {"type":"pxl", "timestamp":300, "advertisable_eid":"B"},
+                         {"type":"imp", "timestamp":350, "advertisable_eid":"A"}]},
+                      {"abcd" : [
+                         {"type":"pxl", "timestamp":400, "advertisable_eid":"C"},
+                         {"type":"imp", "timestamp":450, "advertisable_eid":"B"}]},
+                      {"abcd" : [
+                         {"type":"pxl", "timestamp":500, "advertisable_eid":"D"},
+                         {"type":"imp", "timestamp":550, "advertisable_eid":"C"},
+                         {"type":"imp", "timestamp":570, "advertisable_eid":"A"}
+                     ]}],
+          "expected" : [
+                { "%advertisable_eid" : "A", "$imps" : 2},
+                { "%advertisable_eid" : "B", "$imps" : 1},
+                { "%advertisable_eid" : "C", "$imps" : 1},
+                { "%advertisable_eid" : "D", "$imps" : 0}
+              ]
+      }
+    ]
+}
+

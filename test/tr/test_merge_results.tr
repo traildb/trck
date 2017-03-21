@@ -1,0 +1,27 @@
+foreach %aeid,%seid in @arr merged results
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid, segment_eid = %seid -> yield $match, yield type to #types, yield segment_eid to #segments, yield cookie,segment_eid to #bar
+            type = "bz" -> yield advertisable_eid to #foo
+            * -> repeat
+
+
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":100, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":200, "advertisable_eid" : "a2", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":300, "advertisable_eid" : "a2", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":400, "advertisable_eid" : "a3", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a2", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a3", "segment_eid" : "s3"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a2", "segment_eid" : "s2"}
+--                    ]}],
+--         "expected" : { "$match" : 5, "#types" : ["cli"], "#segments" : ["s1", "s2", "s3"]}
+--     }
+-- ],
+-- "params" : {"@arr" : [["a1", "s1"], ["a2", "s2"], ["a3", "s3"]]}
+-- }

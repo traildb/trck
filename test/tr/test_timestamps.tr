@@ -1,0 +1,32 @@
+foreach %aeid,%seid in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid, segment_eid = %seid, timestamp >= %ts, timestamp < %ts2 -> yield $match
+            * -> repeat
+
+
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":1000,    "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":1000000, "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":1000100, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":1000200, "advertisable_eid" : "a2", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":1000300, "advertisable_eid" : "a2", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":1000400, "advertisable_eid" : "a3", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":1000500, "advertisable_eid" : "a2", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":1000600, "advertisable_eid" : "a3", "segment_eid" : "s3"},
+--                      {"type":"cli", "timestamp":1000700, "advertisable_eid" : "a2", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":3000000, "advertisable_eid" : "a1", "segment_eid" : "s1"}
+--                    ]}],
+--         "expected" : [
+--                      {"%aeid" : "a1", "%seid" : "s1", "$match" : 1},
+--                      {"%aeid" : "a2", "%seid" : "s2", "$match" : 3},
+--                      {"%aeid" : "a3", "%seid" : "s3", "$match" : 1}
+--                     ]
+--     }
+-- ],
+-- "params" : {"@arr" : [["a1", "s1"], ["a2", "s2"], ["a3", "s3"]], "%ts" : "1000000", "%ts2" : "2000000"}
+-- }

@@ -1,0 +1,5 @@
+foreach %aeid
+    start ->
+        receive
+            advertisable_eid = %aeid-> yield $r
+            * -> repeat

@@ -1,0 +1,27 @@
+{
+    "rules" : [
+        {
+            "clauses" : [
+                {"attrs" : {"type" : ["imp"], "advertisable_eid" : ["%advertisable_eid"]}, "yield": ["$imps"], "action" : "restart-from-next"},
+                {"attrs" : {}, "action" : "repeat", "action" : "restart-from-next"}
+            ],
+            "after" : {"action" : "restart-from-next"}
+        }
+    ],
+    "groupby" : {"vars" : ["%advertisable_eid"]},
+
+    "tests" : [
+      {
+        "trails" : [{"abcd" : [
+                            {"type":"imp", "timestamp":200, "advertisable_eid":"A"},
+                            {"type":"imp", "timestamp":300, "advertisable_eid":"B"},
+                            {"type":"pxl", "timestamp":300, "advertisable_eid":"C"},
+                            {"type":"imp", "timestamp":400, "advertisable_eid":"B"},
+                            {"type":"imp", "timestamp":500, "advertisable_eid":"A"}
+                     ]}],
+        "expected" :
+              {"A" : {"$imps" : 2}, "B" : {"$imps": 2}}
+      }
+    ]
+
+}

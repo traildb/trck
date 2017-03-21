@@ -1,0 +1,6 @@
+*.pyc
+src/parser.out
+src/parsetab.py
+lib/*.o
+lib/*.a
+bin/gettrail

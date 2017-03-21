@@ -1,0 +1,33 @@
+{
+    "rules" : [
+    { "window":10000000,
+        "clauses":[
+            {"attrs":{"type":["pxl"]}, "action":"break"},
+            {"attrs":{}, "action":"repeat"}
+        ]
+    },
+    { "window":10000000,
+        "clauses":[
+            {"attrs":{"type":["imp"], "timestamp" : [">1000"]}, "action":"stop", "yield":[{"dst":"$match"}]},
+            {"attrs":{}, "action":"repeat"}
+        ]
+    }
+    ],
+
+    "tests" : [
+        {"trails" : [{"abcd" : [
+                         {"type" : "pxl", "timestamp":100},
+                         {"type" : "imp", "timestamp":1200, "campaign_eid":"A"},
+                         {"type" : "imp", "timestamp":1400}
+                    ]}],
+        "expected" : {"$match": 1}
+    },
+        {"trails" : [{"abcd" : [
+                         {"type" : "pxl", "timestamp":100},
+                         {"type" : "cli", "timestamp":200, "campaign_eid":"A"},
+                         {"type" : "imp", "timestamp":400}
+                    ]}],
+        "expected" : {"$match": 0}
+    }
+    ]
+}

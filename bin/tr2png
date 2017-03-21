@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+import sys
+import os
+import json
+import re
+from graphviz import Digraph
+
+sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '../src'))
+import trparser
+
+dot = Digraph(format = "png", engine = "dot")
+
+with open(sys.argv[1]) as f:
+    flat_rules = trparser.compile_tr(f.read())
+    if flat_rules.get('groupby'):
+        raise Exception("groupby not supported")
+
+    # NODES
+    for rule in flat_rules["rules"]:
+        dot.node(str(rule["n"]), rule["name"])
+
+
+    # EDGES
+
+    for rule in flat_rules["rules"]:
+        name = rule["name"]
+        for clause in rule["clauses"]:
+            yield_to = ""
+            if "yield" in clause:
+                yield_to = "yield {}".format(clause["yield"][0])
+
+            if clause["action"] == "repeat":
+                pass
+
+            restart_from = re.findall(r'restart-from-next\((\d+)\)', clause["action"])
+            if restart_from:
+                dot.edge(str(rule["n"]), restart_from[0], yield_to)
+
+
+dot.render(sys.argv[1].replace(".tr", ""))

@@ -1,0 +1,54 @@
+{
+  "rules": [
+     {
+       "window" : 10000000,
+       "clauses" : [
+                    {"attrs" : { "type" : ["imp"], "campaign_eid" : ["A"]}, "action" : "break" },
+                    {"attrs" : {}, "action":"repeat" }
+                   ]
+     },
+     { "outer" : 4, "window" : 1000, "after" : { "yield" : [{"dst":"$vtc"}], "action" : "restart-from-here"}},
+
+         { "window" : 10000000,
+           "clauses" : [
+                            {"attrs":{"type":["pxl"], "segment_eid" : ["B"]}, "action" : "break" },
+                            {"attrs":{"type":["cli"]}, "action" : "restart-from-next(0)" },
+                            {"attrs":{}, "action":"repeat"}
+                        ]
+         },
+         {
+           "window" : 100000000,
+           "clauses" :[
+                        {"attrs":{"type":["cli"]}, "action" : "restart-from-next(0)" },
+                        {"attrs":{}, "action":"repeat" }
+                      ]
+         }
+  ],
+
+  "tests": [
+        {
+            "trails" : [{"abcd" : [
+                         {"type":"imp", "timestamp":0},
+                         {"type":"imp", "timestamp":100},
+                         {"type":"imp", "timestamp":200, "campaign_eid":"A"},
+                         {"type":"imp", "timestamp":300},
+                         {"type":"pxl", "timestamp":300, "segment_eid":"B"},
+                         {"type":"imp", "timestamp":400}
+                       ]}],
+            "expected" : {"$vtc" : 1}
+        },
+        {
+            "trails" : [{"abcd" : [
+                         {"type":"imp", "timestamp":0},
+                         {"type":"imp", "timestamp":100},
+                         {"type":"imp", "timestamp":200, "campaign_eid":"A"},
+                         {"type":"imp", "timestamp":300},
+                         {"type":"pxl", "timestamp":300, "segment_eid":"B"},
+                         {"type":"cli", "timestamp":400},
+                         {"type":"imp", "timestamp":500}
+
+            ]}],
+            "expected" : {"$vtc" : 0}
+        }
+    ]
+}

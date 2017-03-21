@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+
+import traildb
+import json
+import sys
+
+
+# Creates traildbs from data in JSON format, used for unit tests.
+# Two JSON formats are supported:
+#
+# "simple" format:
+# [event1, event2] where each event is a dictionary containing "timestamp" as int
+#  and arbitrary field key/value pairs.
+#
+# "cookie" format:
+# {"cookie1" : [event1, event2], "cookie2" : [event3, event4]}
+if __name__ == '__main__':
+    tdb_path = sys.argv[1]
+
+    test_data = json.load(sys.stdin)
+
+    field_set = set()
+    for cookie in test_data:
+        events = test_data[cookie]
+        for e in events:
+            field_set.update(set(e.keys()))
+
+    ofields = list(field_set - set(['timestamp']))
+
+    t = traildb.TrailDBConstructor(tdb_path, ofields=ofields)
+
+    for cookie in test_data:
+        events = test_data[cookie]
+        prev_ts = None
+
+        # cookie string is assumed to be a plain string
+        if len(cookie) < 16:
+            cookie = cookie + "\x00" * (16-len(cookie))
+
+        for e in events:
+            if prev_ts and prev_ts > e['timestamp']:
+                raise Exception('Timestamps must be increasing monotonically. prev_ts={}, ts={}'.format(prev_ts, e['timestamp']))
+
+            #if prev_ts and prev_ts == e['timestamp']:
+            #    raise Exception('Timestamps cannot be identical')
+
+            prev_ts = e['timestamp']
+
+            t.add(cookie.encode('hex'), int(e['timestamp']), [e.get(of, '') for of in ofields])
+
+    t.finalize()

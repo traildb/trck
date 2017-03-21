@@ -1,0 +1,63 @@
+{
+  "rules" : [
+        {  "window": 100000000,
+           "clauses" : [
+                        {"attrs":{"type":["pxl"], "advertisable_eid":["%advertisable_eid"]}, "action" : "restart-from-next(1)" },
+                        {"attrs":{}, "action" : "repeat" }
+                      ]
+        },
+        { "window": 1000,
+           "clauses" : [
+                        {"attrs":{"type":["pxl"], "advertisable_eid":["%advertisable_eid"]}, "op" : "not", "action" : "repeat"},
+                        {"attrs":{}, "action" : "restart-from-next(1)"}
+           ],
+           "after":{"action":"restart-from-here", "yield" : [{"dst":"$matches"}]}
+        }
+    ],
+  "groupby" : {"vars" : [ "%advertisable_eid" ] },
+  "tests" : [
+      {
+          "trails" : [{"abcd" : [
+                         {"type":"imp", "timestamp":200, "advertisable_eid":"A"},
+                         {"type":"imp", "timestamp":300, "advertisable_eid":"A"},
+                         {"type":"imp", "timestamp":400, "advertisable_eid":"A"},
+                         {"type":"imp", "timestamp":500, "advertisable_eid":"A"}
+                     ]}],
+          "expected" :
+              [{ "%advertisable_eid" : "A", "$matches" : 0}]
+      },
+
+      {
+            "trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":200, "advertisable_eid":"A"},
+                         {"type":"pxl", "timestamp":300, "advertisable_eid":"A"},
+                         {"type":"pxl", "timestamp":400, "advertisable_eid":"A"},
+                         {"type":"pxl", "timestamp":500, "advertisable_eid":"A"}
+                        ]}],
+          "expected" :
+              [{ "%advertisable_eid" : "A", "$matches" : 1}]
+      },
+      {
+        "trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":0, "advertisable_eid":"A"},
+                         {"type":"imp", "timestamp":3000, "advertisable_eid":"A"}
+                  ]}],
+        "expected" :
+              [{ "%advertisable_eid" : "A", "$matches" : 1}]
+      },
+      {
+          "trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":200, "advertisable_eid":"A"},
+                         {"type":"pxl", "timestamp":300, "advertisable_eid":"B"},
+                         {"type":"pxl", "timestamp":400, "advertisable_eid":"C"},
+                         {"type":"pxl", "timestamp":500, "advertisable_eid":"D"}
+                     ]}],
+          "expected" : [
+                  { "%advertisable_eid" : "A", "$matches" : 1},
+                  { "%advertisable_eid" : "B", "$matches" : 1},
+                  { "%advertisable_eid" : "C", "$matches" : 1},
+                  { "%advertisable_eid" : "D", "$matches" : 1}
+          ]
+      }
+    ]
+}

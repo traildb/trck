@@ -1,0 +1,53 @@
+{
+    "rules" : [
+    {  "window": 10000000,
+        "clauses" : [
+            {"attrs":{"type":["pxl"], "advertisable_eid" : ["%eid"]}, "action":"stop", "yield":[{"dst":"$pixel"}]},
+            {"attrs":{}, "action":"repeat"}
+        ],
+        "after" : {"action" : "stop"}
+    }
+    ],
+    "groupby" : {"vars" : ["%eid"]},
+    "tests" : [
+        {"trails" : [{"abcd" : [
+                         {"type":"imp", "timestamp":100, "advertisable_eid" : "A"},
+                         {"type":"imp", "timestamp":200, "campaign_eid":"A"},
+                         {"type":"imp", "timestamp":400},
+                         {"type":"ct2", "timestamp":500}
+                    ]}],
+         "expected" : [{"%eid" : "A", "$pixel" : 0}]
+    },
+
+        {"trails" : [{"abcd" : [
+                         {"type":"imp", "timestamp":100},
+                         {"type":"imp", "timestamp":200, "campaign_eid":"A"},
+                         {"type":"imp", "timestamp":400},
+                         {"type":"ct2", "timestamp":500},
+                         {"type":"pxl", "timestamp":600, "advertisable_eid" : "A"}
+                    ]}],
+         "expected" : [{"%eid" : "A", "$pixel" : 1}]
+    },
+
+        {"trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":0, "advertisable_eid" : "A"},
+                         {"type":"imp", "timestamp":100},
+                         {"type":"imp", "timestamp":200, "campaign_eid":"A"},
+                         {"type":"pxl", "timestamp":300, "advertisable_eid" : "A"},
+                         {"type":"imp", "timestamp":400},
+                         {"type":"ct2", "timestamp":500}
+                    ]}],
+         "expected" : [{"%eid" : "A", "$pixel" : 1}]
+    },
+        {"trails" : [{"abcd" : [
+                         {"type":"pxl", "timestamp":0, "advertisable_eid" : "B"},
+                         {"type":"imp", "timestamp":100},
+                         {"type":"imp", "timestamp":200, "campaign_eid":"A"},
+                         {"type":"pxl", "timestamp":300, "advertisable_eid" : "A"},
+                         {"type":"imp", "timestamp":400},
+                         {"type":"ct2", "timestamp":500}
+                    ]}],
+         "expected" : [{"%eid" : "A", "$pixel" : 1}, {"%eid" : "B", "$pixel" : 1}]
+    }
+    ]
+}

@@ -1,0 +1,8 @@
+#pragma once
+
+#include "utils.h"
+
+struct results_t;
+
+
+void output_json(groupby_info_t *gi, results_t *results);

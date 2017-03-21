@@ -1,0 +1,123 @@
+foreach %aeid in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid -> yield $match
+            * -> repeat
+
+
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1", "segment_eid" : "s3"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1", "segment_eid" : "s4"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 4}],
+--         "filter" : {"clauses" : [[{"field": "type", "value": "cli"}]]}
+--     },
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1", "segment_eid" : "s2"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 2}],
+--         "filter" : {"clauses" : [[{"field": "segment_eid", "value": "s1"}]]}
+--     },
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1", "segment_eid" : "s4"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1", "segment_eid" : "s2"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 2}],
+--         "filter" : {"clauses" : [[{"field": "segment_eid", "value": "s1"}, {"field": "segment_eid", "value": "s4"}]]}
+--     },
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1", "segment_eid" : "s4"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1", "segment_eid" : "s2"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 0}],
+--         "filter" : {"clauses" : [[{"field": "segment_eid", "value": "s1"}], [{"field": "segment_eid", "value": "s4"}]]}
+--     },
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1", "segment_eid" : "s4"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1", "segment_eid" : "s2"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 1}],
+--         "filter" : {"clauses" : [[{"field": "segment_eid", "value": "s1"}], [{"field": "advertisable_eid", "value": "a1"}]]}
+--     },
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1", "segment_eid" : "s4"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1", "segment_eid" : "s2"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 0}],
+--         "filter" : {"clauses" : [[{"field": "foo", "value": "s1"}], [{"field": "segment_eid", "value": "a1"}]]}
+--     },
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1", "segment_eid" : "s4"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1", "segment_eid" : "s2"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 4}],
+--         "filter" : {"clauses" : [[{"field": "foo", "value": "s1", "op" : "notequal"}]]}
+--     },
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1", "segment_eid" : "s4"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1", "segment_eid" : "s2"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 0}],
+--         "filter" : {"clauses" : [[{"field": "segment_eid", "value": ""}]]}
+--     },
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1", "segment_eid" : "s4"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1", "segment_eid" : "s2"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 4}],
+--         "filter" : {"clauses" : [[{"field": "foo", "value": ""}]]}
+--     },
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1", "segment_eid" : "s4"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1", "segment_eid" : "s2"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 0}],
+--         "filter" : {"clauses" : [[{"field": "foo", "value": "", "op" : "notequal"}]]}
+--     },
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1", "segment_eid" : "s1"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a1", "segment_eid" : "s2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1", "segment_eid" : "s4"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1", "segment_eid" : "s2"}
+--                    ]}],
+--         "expected" : [{"%aeid" : "a1", "$match" : 4}],
+--         "filter" : {"clauses" : [[{"field": "foo", "value": "bzz", "op" : "notequal"}]]}
+--     }
+--     ],
+-- "params" : {"@arr" : [["a1"]]}
+-- }
