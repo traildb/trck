@@ -131,9 +131,9 @@ The syntax is similar to Erlang/Prolog but with indentation-based block syntax a
 Example:
 ```haskell
 main ->
-  receive
-      type = "click", campaign_id = "A"-> yield $clicks
-      * -> repeat
+    receive
+        type = "click", campaign_id = "A"-> yield $clicks
+        * -> repeat
 ```
 
 This program calculates the number of "click" events for a campaign. `receive` block can also be seen as an infinite loop, for every arriving event we have two pattern matching clauses here. Action here is the `yield` statement, that increments a counter variable `$clicks` every time event in a trail matches the condition.
@@ -181,11 +181,11 @@ You can nest blocks within a parent `window` block. This is useful when you need
 The syntax is `window ... after`:
 ``` haskell
 parentblock1 ->
-  window
-      block1 ->
-          ... clauses ...
+    window
+        block1 ->
+            ... clauses ...
         block2 ->
-          ... clauses ...
+            ... clauses ...
     after 30d -> someblock
 ```
 
@@ -196,32 +196,33 @@ I.e. this is legal, `block1` can transition to `foo`:
 ...
 foo ->
   ...
+
 parentblock1 ->
-  window
+    window
         block0 ->
-          ... clauses ...
-      block1 ->
-          type = "X" -> foo
+            ... clauses ...
+        block1 ->
+            type = "X" -> foo
         block2 ->
-          ... clauses ...
+            ... clauses ...
     after 30d -> someblock
 ```
 
 But you can't go from `foo` to `block1`, this code won't compile:
 ``` haskell
 foo ->
-  receive
-      type = "X" -> block1
-    * -> repeat
+    receive
+        type = "X" -> block1
+        * -> repeat
 
 parentblock1 ->
-  window
-      block0 ->
-          ... clauses ...
-      block1 ->
-          ... clauses ...
+    window
+        block0 ->
+            ... clauses ...
+        block1 ->
+            ... clauses ...
         block2 ->
-          ... clauses ...
+            ... clauses ...
     after 30d -> someblock
 ```
 
@@ -376,7 +377,7 @@ As described above, this example produces a separate result for each item in `@a
 ```json
 [
   {"%cid" : "A", "#ads" : ["seg1,ad1", "seg2,ad2"], "&domains" : {"example.com" : 12, "news.org" : 41} },
-    {"%cid" : "B", "#ads" : ["seg1,ad2"], "&domains" : {"example.com" : 84, "news.org" : 11}}
+  {"%cid" : "B", "#ads" : ["seg1,ad2"], "&domains" : {"example.com" : 84, "news.org" : 11}}
 ]
 ```
 
@@ -398,7 +399,8 @@ foreach %cid in @arr merged results
 Produces following output instead:
 
 ```json
-{"#ads": ["seg1,ad1", "seg2,ad2", "seg1,ad2"], "&domains": {"example.com": 96, "news.org": 52}}
+{"#ads": ["seg1,ad1", "seg2,ad2", "seg1,ad2"],
+ "&domains": {"example.com": 96, "news.org": 52}}
 ```
 
 
