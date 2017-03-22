@@ -1,3 +1,5 @@
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/traildb/traildb?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 # `trck`: Query engine for TrailDB
 
 `trck` is a tool to query TrailDBs for aggregate metrics based on individual user behavior.
