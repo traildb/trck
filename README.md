@@ -120,9 +120,9 @@ The syntax is similar to Erlang/Prolog but with indentation-based block syntax a
 
 ```erlang
 [block_name] ->
-	receive
-    	... [condition] -> [action] ...
-    	... [condition] -> [action] ...
+    receive
+        ... [condition] -> [action] ...
+        ... [condition] -> [action] ...
         ...
     after [timeout] -> [action]
 
@@ -131,9 +131,9 @@ The syntax is similar to Erlang/Prolog but with indentation-based block syntax a
 Example:
 ```haskell
 main ->
-	receive
-    	type = "click", campaign_id = "A"-> yield $clicks
-    	* -> repeat
+  receive
+      type = "click", campaign_id = "A"-> yield $clicks
+      * -> repeat
 ```
 
 This program calculates the number of "click" events for a campaign. `receive` block can also be seen as an infinite loop, for every arriving event we have two pattern matching clauses here. Action here is the `yield` statement, that increments a counter variable `$clicks` every time event in a trail matches the condition.
@@ -148,7 +148,7 @@ Clauses must be exhaustive: if none of them match, you get a runtime error. Norm
 Let's look closer at the matching clause syntax.
 ```haskell
 ...
-		type = "click", campaign_id = "A"-> yield $clicks, skip_dup
+    type = "click", campaign_id = "A"-> yield $clicks, skip_dup
 ...
 ```
 The part before the `->` arrow specifies matching conditions. A comma means boolean AND. There is no OR operator as of now, but you can emulate it by having multiple clauses.
@@ -161,9 +161,9 @@ You can also limit receive block duration by specifying windows using `after` cl
 
 ```haskell
 main ->
-	receive
-		type = "click", campaign_id = "A"-> yield $clicks, skip_dup
-		* -> repeat
+    receive
+        type = "click", campaign_id = "A"-> yield $clicks, skip_dup
+        * -> repeat
 skip_dup ->
     receive
         * -> repeat
@@ -181,11 +181,11 @@ You can nest blocks within a parent `window` block. This is useful when you need
 The syntax is `window ... after`:
 ``` haskell
 parentblock1 ->
-	window
-    	block1 ->
-        	... clauses ...
+  window
+      block1 ->
+          ... clauses ...
         block2 ->
-        	... clauses ...
+          ... clauses ...
     after 30d -> someblock
 ```
 
@@ -195,33 +195,33 @@ I.e. this is legal, `block1` can transition to `foo`:
 ``` haskell
 ...
 foo ->
-	...
+  ...
 parentblock1 ->
-	window
+  window
         block0 ->
-        	... clauses ...
-    	block1 ->
-        	type = "X" -> foo
+          ... clauses ...
+      block1 ->
+          type = "X" -> foo
         block2 ->
-        	... clauses ...
+          ... clauses ...
     after 30d -> someblock
 ```
 
 But you can't go from `foo` to `block1`, this code won't compile:
 ``` haskell
 foo ->
-	receive
-    	type = "X" -> block1
-		* -> repeat
+  receive
+      type = "X" -> block1
+    * -> repeat
 
 parentblock1 ->
-	window
-    	block0 ->
-        	... clauses ...
-    	block1 ->
-        	... clauses ...
+  window
+      block0 ->
+          ... clauses ...
+      block1 ->
+          ... clauses ...
         block2 ->
-        	... clauses ...
+          ... clauses ...
     after 30d -> someblock
 ```
 
@@ -232,10 +232,10 @@ Jobs may use parameters that are passed externally to them in matching condition
 
 ```haskell
 main ->
-	receive
-    	type = "click", campaign_id = %id -> yield $clicks
-    	type = "click", campaign_id in #foo -> yield $clicks
-    	* -> repeat
+  receive
+      type = "click", campaign_id = %id -> yield $clicks
+      type = "click", campaign_id in #foo -> yield $clicks
+      * -> repeat
 
 ```
 
@@ -263,10 +263,10 @@ Here `@param` is specified in parameter config file (see `--params` option for c
 In the above example, first and third items of every tuple must be strings and the second item is a set (encoded in JSON as array):
 ```
 {
-	"@param" : [
-    				["A", ["item1", "item2"], "B"]
-    				["Z", ["item1", "item3"], "C"]
-               ]
+  "@param" : [
+    ["A", ["item1", "item2"], "B"]
+    ["Z", ["item1", "item3"], "C"]
+  ]
 }
 ```
 
@@ -282,7 +282,7 @@ Sometimes you just want to run `foreach` over a simple list of all values of som
 foreach %cid
    block1 ->
        receive
-       	   campaign_id = %cid, ... -> ...
+           campaign_id = %cid, ... -> ...
            ....
    ...
 ```
@@ -326,8 +326,8 @@ foreach %cid in @arr
 This example would produce a separate counter for each item in `@arr`, e.g.:
 ```json
 [
-	{"%cid" : "A", "$clicks" : 5},
-    {"%cid" : "B", "$clicks" : 3}
+  {"%cid" : "A", "$clicks" : 5},
+  {"%cid" : "B", "$clicks" : 3}
 ]
 ```
 
@@ -375,7 +375,7 @@ foreach %cid in @arr
 As described above, this example produces a separate result for each item in `@arr`, e.g.:
 ```json
 [
-	{"%cid" : "A", "#ads" : ["seg1,ad1", "seg2,ad2"], "&domains" : {"example.com" : 12, "news.org" : 41} },
+  {"%cid" : "A", "#ads" : ["seg1,ad1", "seg2,ad2"], "&domains" : {"example.com" : 12, "news.org" : 41} },
     {"%cid" : "B", "#ads" : ["seg1,ad2"], "&domains" : {"example.com" : 84, "news.org" : 11}}
 ]
 ```
@@ -432,4 +432,3 @@ Then C module produced by `fsm2c.py` is compiled with `match_traildb.c` which pr
 - [Ricardo Murillo](https://github.com/rcjmurillo)
 - [Knut Nesheim](https://github.com/knutin)
 - [Ville Tuulos](https://github.com/tuulos)
-
