@@ -461,6 +461,10 @@ def p_arg_id(p):
     """ arg : ID """
     p[0] = {'_k': 'field', 'name': p[1]}
 
+def p_arg_fcall(p):
+    """ arg : fcall """
+    p[0] = p[1]
+
 def p_arg_ts(p):
     """ arg : START_TIMESTAMP LBRACKET ID RBRACKET """
     p[0] = {'_k': 'window_ref', 'ref': p[3]}

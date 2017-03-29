@@ -20,3 +20,20 @@ int foo(char *out_var, int out_var_len,
     return 4;
 }
 
+#define MIN(x,y) (((x) < (y)) ? (x) : (y))
+
+int inner_fn(char *out_var, int out_var_len, char *arg_0, int arg_0_len) {
+    int part1_len = MIN(strlen("inner_"), out_var_len);
+    memcpy(out_var, "inner_", part1_len);
+    int part2_len = MIN(arg_0_len, out_var_len - part1_len);
+    memcpy(out_var + part1_len, arg_0, part2_len);
+    return part2_len + part1_len;
+}
+
+int outer_fn(char *out_var, int out_var_len, char *arg_0, int arg_0_len) {
+    int part1_len = MIN(strlen("inner_"), out_var_len);
+    memcpy(out_var, "outer_", part1_len);
+    int part2_len = MIN(arg_0_len, out_var_len - part1_len);
+    memcpy(out_var + part1_len, arg_0, part2_len);
+    return part2_len + part1_len;
+}
