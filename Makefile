@@ -1,14 +1,11 @@
 VERSION?=$(shell git describe --long --abbrev=5 --match "v*" | perl -ple 's/^v(([0-9]+)(\.[0-9]+)+)-([0-9]+)-([^-]+)/$$1-$$4-h$$5/')
 
 INCLUDEPATH=deps/traildb/src
-LIBPATH=deps/traildb/build
 
-#all: src/parsetab.py deps/traildb/lib/libtraildb.so lib/libtrck.a bin/gettrail bin/gettrail_tdb
 all: src/parsetab.py lib/libtrck.a bin/gettrail bin/gettrail_tdb
 
 clean:
 	rm src/out_*.c src/out_*.h src/parsetab.py lib/* || true
-	#make -C deps/traildb clean
 
 src/parsetab.py: src/trparser.py
 	cd src && python trparser.py gen
@@ -49,7 +46,7 @@ lib/libtrck.a: $(COBJS) lib/judy_str_map.o lib/xxhash.o
 	$(AR) -ruvs $@ $^
 
 bin/gettrail: src/gettrail.c
-		$(CC) -std=c99  -O3 -g -Wall -Wno-unused-variable -Wno-unused-label -DDEBUG=$(DEBUG) -I $(INCLUDEPATH) -L $(LIBPATH) $^ -ltraildb -lJudy -lcurl -ltraildb -ljson-c -o $@
+		$(CC) -std=c99  -O3 -g -Wall -Wno-unused-variable -Wno-unused-label -DDEBUG=$(DEBUG) -I $(INCLUDEPATH) $^ -ltraildb -lJudy -lcurl -ltraildb -ljson-c -o $@
 
 bin/gettrail_tdb: src/gettrail_tdb.c src/traildb_filter.c
 	$(CC) -std=c99  -O3 -g -Wall -DDEBUG=$(DEBUG) -I $(INCLUDEPATH) -L $(LIBPATH) $^ -ltraildb -lJudy -lcurl -ltraildb -ljson-c -o $@
