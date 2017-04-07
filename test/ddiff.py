@@ -39,6 +39,18 @@ def compare_lists(j1, j2):
     if not succ:
         sys.exit(1)
 
+def compare_dicts(j1, j2):
+    succ = True
+    for k, v in j1.items():
+        if k in j2 and j2[k] == v:
+            continue
+        else:
+            print >>sys.stderr, k, "expected", json.dumps(v), "got", json.dumps(j2.get(k))
+            succ = False
+    if not succ:
+        sys.exit(1)
+
+
 if __name__ == '__main__':
     if sys.argv[1] != '-':
         with open(sys.argv[1]) as f:

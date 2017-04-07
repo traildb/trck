@@ -64,6 +64,8 @@ def var_type(n):
         return 'composite'
     elif n.startswith('$'):
         return 'scalar'
+    elif n.startswith('^'):
+        return 'hll'
     else:
         assert(not n)
 
@@ -71,7 +73,7 @@ def var_type(n):
 def is_variable(n):
     if n == '':
         return False
-    return n[0] in '#&%$@'
+    return n[0] in '#&%$@^'
 
 
 def strip_type(v):
@@ -292,26 +294,30 @@ def compile_yield(g, c, program, current_rule_id):
             var = _yield['dst']
             if var_type(var) == 'scalar':
                 g.o("results->%s += 1;" % strip_type(var))
-            elif var_type(var) == 'set' or var_type(var) == 'multiset':
+            elif var_type(var) == 'set' or var_type(var) == 'multiset' or var_type(var) == 'hll':
                 _tuple = _yield['src']
 
                 with BRACES(g):
                     g.o("string_tuple_t tuple;")
                     g.o("string_tuple_init(&tuple);")
                     g.o("item_t i = ctx_get_item(ctx);")
-
+                    print "tuple = ", _tuple
                     for elem in _tuple:
+
+                        print "elem = ", elem
                         with BRACES(g):
                             g.o("char val[256] = \"\";")
                             g.o("int len = 0;")
                             g.o("int type = 0;")
                             compile_yield_term(g, elem, program, current_rule_id, 'val', 'len', 'type')
                             g.o("string_tuple_append(val, len, type, &tuple);")
-
+                    print "var = ", var
                     if var_type(var) == 'set':
                         g.o("set_insert(&results->set_%s, &tuple);" % strip_type(var))
                     elif var_type(var) == 'multiset':
                         g.o("mset_insert(&results->mset_%s, &tuple);" % strip_type(var))
+                    elif var_type(var) == 'hll':
+                        g.o("results->hll_%s = hll_insert(results->hll_%s, &tuple);" % (var_name, var_name))
                     else:
                         raise Exception('Bad yield: %s' % var)
             else:
@@ -505,6 +511,7 @@ def preprocess(program):
     for r in program.rules:
         for c in r.get("clauses", []):
             if "yield" in c:
+                print "c = ", c
                 add_yield_vars(program, c['yield'])
         if "after" in r:
             if "yield" in r["after"]:
@@ -776,7 +783,7 @@ def gen_structs(g, program):
 
 
 def gen_print(g, program):
-    with BRACES(g, "void match_save_result(results_t *results, void *arg, void (*save_int)(void *, char *, int64_t), void (*save_set)(void *, char *, set_t *), void (*save_multiset)(void *, char *, set_t *))"):
+    with BRACES(g, "void match_save_result(results_t *results, void *arg, void (*save_int)(void *, char *, int64_t), void (*save_set)(void *, char *, set_t *), void (*save_multiset)(void *, char *, set_t *), void (*save_hll)(void *, char *, hyperloglog_t *))"):
         for i, k in enumerate(program.yield_counters):
             g.o("save_int(arg, \"%s\", results->%s);" % (k, strip_type(k)))
         for i, k in enumerate(program.yield_sets):

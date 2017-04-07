@@ -2,7 +2,7 @@
 # msgpack and json output format are not really compatible in a sense there
 # is no way to convert unambiguously convert one to another. For example, json
 # we encode cookies as hex strings and they are stored as binary strings in
-# JSON.
+# MSGPACK.
 #
 # This script does this by applying a bunch of hacks, like treating every
 # 16-byte string as cookie, and some other ugly stuff. It is only supposed to
