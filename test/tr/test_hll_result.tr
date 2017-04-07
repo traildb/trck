@@ -1,0 +1,30 @@
+foreach %aeid in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid -> yield $match, yield cookie to ^trails
+            * -> repeat
+
+
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "trails" : [{"abcd": [{"type":"cli", "timestamp":100, "advertisable_eid" : "a1"}, {"type":"cli", "timestamp":200, "advertisable_eid" : "a1"}],
+--                      "a4g8": [{"type":"cli", "timestamp":100, "advertisable_eid" : "a2"}, {"type":"cli", "timestamp":200, "advertisable_eid" : "a1"}],
+--                      "k4o0": [{"type":"pxl", "timestamp":200, "advertisable_eid" : "a1"}, {"type":"cli", "timestamp":500, "advertisable_eid" : "a1"}],
+--                      "m3f6": [{"type":"cli", "timestamp":300, "advertisable_eid" : "a1"}, {"type":"cli", "timestamp":600, "advertisable_eid" : "a2"}],
+--                      "n0i8": [{"type":"cli", "timestamp":100, "advertisable_eid" : "a3"}, {"type":"pxl", "timestamp":200, "advertisable_eid" : "a1"}],
+--                      "h7y4": [{"type":"pxl", "timestamp":200, "advertisable_eid" : "a2"}, {"type":"cli", "timestamp":400, "advertisable_eid" : "a2"}],
+--                      "fe34": [{"type":"cli", "timestamp":200, "advertisable_eid" : "a1"}, {"type":"cli", "timestamp":300, "advertisable_eid" : "a3"}],
+--                      "o9i4": [{"type":"cli", "timestamp":400, "advertisable_eid" : "a2"}, {"type":"cli", "timestamp":700, "advertisable_eid" : "a3"}]
+--                    }],
+--         "expected" : [
+--                      {"%aeid" : "a1", "$match" : 6, "^trails" : "0e01ff02000101a701000102961d0001019207000102d623000104d73300"},
+--                      {"%aeid" : "a2", "$match" : 4, "^trails" : "0e01a7040001028738000101f80f0001049a21000101bc1200"},
+--                      {"%aeid" : "a3", "$match" : 3, "^trails" : "0e01d128000102ba06000102b63e000101bc1200"},
+--                      {"%aeid" : "a4", "$match" : 0, "^trails" : "0e00"}
+--                     ]
+--     }
+-- ],
+-- "params" : {"@arr" : [["a1"], ["a2"], ["a3"], ["a4"]]}
+-- }
