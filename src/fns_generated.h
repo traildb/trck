@@ -1,5 +1,5 @@
 #pragma once
-
+#include "hll_common.h"
 /*
  * External definitions used by compiled trck program. They are opaque for
  * generated code.
@@ -61,7 +61,8 @@ void match_free_params(kvids_t *ids);
 void match_save_result(results_t *results, void *arg,
 					   void (*save_int)(void *, char *, int64_t),
                        void (*save_set)(void *, char *, set_t *),
-                       void (*save_multiset)(void *, char *, set_t *));
+                       void (*save_multiset)(void *, char *, set_t *),
+                       void (*save_hll)(void *, char *, hyperloglog_t *));
 /*
  * Get the size of result_t structure in bytes.
  */

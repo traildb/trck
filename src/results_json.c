@@ -118,8 +118,13 @@ void json_add_multiset(void *p, char *name, set_t *value) {
 
 json_object *match_results_to_json(results_t *results) {
     json_object *res = json_object_new_object();
-    match_save_result(results, res, json_add_int, json_add_set, json_add_multiset);
+    match_save_result(results, res, json_add_int, json_add_set, json_add_multiset, json_add_hll);
     return res;
+}
+
+void json_add_hll(void *p, char *name, hyperloglog_t *hll) {
+    json_object *obj = (json_object *)p;
+    json_object_object_add(obj, name, hll_to_json(hll));
 }
 
 void output_groupby_result_json(groupby_info_t *gi, int i, results_t *results)

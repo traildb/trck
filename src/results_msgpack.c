@@ -222,6 +222,12 @@ void msgpack_add_set(void *p, char *name, set_t *value) {
     output_set(pk, value, 0);
 }
 
+void msgpack_add_hll(void *p, char *name, hyperloglog_t *hll) {
+    // don't support hlls in msgpack for now
+    return;
+
+}
+
 
 void msgpack_add_multiset(void *p, char *name, set_t *value) {
     msgpack_packer *pk = (msgpack_packer *)p;
@@ -279,7 +285,7 @@ void output_msgpack(groupby_info_t *gi, results_t *results)
     fprintf(stderr, "Generating msgpack output\n");
     if (gi == NULL || gi->num_vars == 0 || gi->merge_results) {
         int64_t num_items = 0; /* Count number of items to save */
-        match_save_result(results, &num_items, count_int, count_set, count_set);
+        match_save_result(results, &num_items, count_int, count_set, count_set, msgpack_add_hll);
 
 
         /*
@@ -287,7 +293,7 @@ void output_msgpack(groupby_info_t *gi, results_t *results)
          */
         msgpack_packer* pk = msgpack_packer_new(stdout, msgpack_fbuffer_write);
         msgpack_pack_map(pk, num_items);
-        match_save_result(results, pk, msgpack_add_int, msgpack_add_set, msgpack_add_multiset);
+        match_save_result(results, pk, msgpack_add_int, msgpack_add_set, msgpack_add_multiset, msgpack_add_hll);
     } else {
 
         msgpack_packer* pk = msgpack_packer_new(stdout, msgpack_fbuffer_write);
@@ -312,10 +318,10 @@ void output_msgpack(groupby_info_t *gi, results_t *results)
             msgpack_pack_str_body(pk, "result", strlen("result"));
 
             int64_t num_items = 0; /* Count number of items to save */
-            match_save_result(pres, &num_items, count_int, count_set, count_set);
+            match_save_result(pres, &num_items, count_int, count_set, count_set, msgpack_add_hll);
 
             msgpack_pack_map(pk, num_items);
-            match_save_result(pres, pk, msgpack_add_int, msgpack_add_set, msgpack_add_multiset);
+            match_save_result(pres, pk, msgpack_add_int, msgpack_add_set, msgpack_add_multiset, msgpack_add_hll);
 
             /*
              * Store foreach variable values that correspond to this result.
