@@ -417,15 +417,11 @@ def p_action_yield_multiset(p):
 
 def p_action_yield_hll(p):
     """ yield_var : ID TO HLL """
-    p[0] = {'dst': p[3], 'src': p[1]}
+    p[0] = {'dst': p[3], 'src': [{'_k': 'field', 'name': p[1]}]}
 
 def p_action_yield_set_tuple(p):
     """ yield_var : ids TO HASH """
     p[0] = {'dst': p[3], 'src': p[1]}
-
-def p_action_yield_hll_tuple(p):
-    """ yield_var : ids TO HLL """
-    p[0] = {'dst': p[3], 'src': ",".join(p[1])}
 
 def p_action_yield_multiset_tuple(p):
     """ yield_var : ids TO MULTISET """

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "hyperloglog.h"
 #include "utils.h"
 
 struct results_t;
