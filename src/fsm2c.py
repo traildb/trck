@@ -301,14 +301,13 @@ def compile_yield(g, c, program, current_rule_id):
                     g.o("string_tuple_t tuple;")
                     g.o("string_tuple_init(&tuple);")
                     g.o("item_t i = ctx_get_item(ctx);")
-                    if var_type(var) != 'hll':
-                        for elem in _tuple:
-                            with BRACES(g):
-                                g.o("char val[256] = \"\";")
-                                g.o("int len = 0;")
-                                g.o("int type = 0;")
-                                compile_yield_term(g, elem, program, current_rule_id, 'val', 'len', 'type')
-                                g.o("string_tuple_append(val, len, type, &tuple);")
+                    for elem in _tuple:
+                        with BRACES(g):
+                            g.o("char val[256] = \"\";")
+                            g.o("int len = 0;")
+                            g.o("int type = 0;")
+                            compile_yield_term(g, elem, program, current_rule_id, 'val', 'len', 'type')
+                            g.o("string_tuple_append(val, len, type, &tuple);")
                     if var_type(var) == 'set':
                         g.o("set_insert(&results->set_%s, &tuple);" % strip_type(var))
                     elif var_type(var) == 'multiset':

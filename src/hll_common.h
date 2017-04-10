@@ -1,6 +1,4 @@
 #pragma once
-//#ifndef __HLL_COMMON_H__
-//#define __HLL_COMMON_H__
 typedef struct hyperloglog_t {
         uint8_t *M;
         uint32_t m;

@@ -164,8 +164,9 @@ hyperloglog_t *hll_rle_decode(const char* hll_rle_str)
     uint32_t len = 0;
     uint32_t register_index = 0;
     hll_rle_str += 4;
-    // if we get passed a json string it ends with a qutation mark
-    // handle both just in case
+    /* if we get passed a json string it ends with a qutation mark
+       handle both just in case 
+    */
     while((*hll_rle_str != '\0') && (*hll_rle_str != '\"')){
         uint32_t val = hex_byte_to_byte(hll_rle_str);
         if(curstate == LEN){

@@ -1,16 +1,7 @@
-#ifndef __HYPERLOGLOG_H__
-#define __HYPERLOGLOG_H__
-#include <x86intrin.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-#include <json-c/json.h>
+#pragma once
 #include <json-c/json_object.h>
-#include <stdio.h>
 
 #include "hll_common.h"
-#include "safeio.h"
-#include "utils.h"
 
 #define MIN_P 14
 
@@ -36,6 +27,4 @@ hyperloglog_t * json_to_hll(json_object * obj);
 char * hll_to_string(const hyperloglog_t * hll);
 
 hyperloglog_t * string_to_hll(const char * shll);
-
-#endif
 
