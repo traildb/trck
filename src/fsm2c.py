@@ -510,7 +510,6 @@ def preprocess(program):
     for r in program.rules:
         for c in r.get("clauses", []):
             if "yield" in c:
-                print "c = ", c
                 add_yield_vars(program, c['yield'])
         if "after" in r:
             if "yield" in r["after"]:
@@ -920,7 +919,6 @@ def gen_header(rules, groupby, out=sys.stdout):
     g.o("#define EXPIRES_NEVER %d" % EXPIRES_NEVER)
     g.o("#include <json-c/json.h>")
     g.o('#include "utils.h"')
-    g.o('#include "hyperloglog.h"')
     gen_structs(g, program)
 
     g.o("static inline bool match_no_rewind() { return %s; }" % ('true' if program.no_rewind else 'false'))

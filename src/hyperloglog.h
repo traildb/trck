@@ -10,16 +10,9 @@ void hll_add(hyperloglog_t *this, void *v, size_t nbytes);
 /* Get cardinality estimate using HLL */
 double hll_estimate(hyperloglog_t *this);
 
-/* Free hll struct */
-void hll_free(hyperloglog_t *hll);
-
 /* Returns standard error for HLL with 2^p registers */
 double hll_error(int p);
 
-/* merge another hll into this one*/
-hyperloglog_t *hll_merge(hyperloglog_t *this, hyperloglog_t *other);
-
-json_object * hll_to_json(hyperloglog_t * hll);
 
 hyperloglog_t * json_to_hll(json_object * obj);
 
