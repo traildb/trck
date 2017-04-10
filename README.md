@@ -358,6 +358,53 @@ In JSON format as returned by `trck`, variable `&result` would look like this:
 ...
 ```
 
+#### Counting things: yield field to HLL (cardinality estimator)
+Sets and multisets can also be yielded as an HLL data structure encoded in hex using the syntax:
+```haskell
+yield field1,field2 to ^result
+```
+
+In JSON format as returned by `trck`, variable `^result` would look like this:
+```json
+...
+"^result": "0e01a7040001028738000101f80f0001049a21000101bc1200"
+...
+```
+The HLL is encoded as follows:
+```
+ 0e 01 a7040001028738000101f80f0001049a21000101bc1200
+ -- -- ----------------------------------------------
+ ^  ^                       ^
+ |  |                       |
+(1)(2)                     (3)
+
+1) HLL precision (p), bins = 2^p
+2) HLL version:
+    0 = Empty
+    1 = Non-empty
+3) HLL run-length encoded bins, RLE pairs can be stored in two or three bytes, 
+   if the MSB is set, then two bytes were used to store the length.
+```
+
+## Complete example:
+```haskell
+foreach %aeid in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid -> yield segment_eid,ad_eid to #ads
+            type = "imp", advertisable_eid = %aeid -> yield domain to &domains
+            type = "pxl", advertisable_eid = %aeid -> yield cookie to ^cookies
+            * -> repeat
+```
+
+As described above, this example produces a separate result for each item in `@arr`, e.g.:
+```json
+[
+    {"%aeid" : "A", "#ads" : ["seg1,ad1", "seg2,ad2"], "&domains" : {"example.com" : 12, "news.org" : 41}, "^cookies": "0e01a7040001028738000101f80f0001049a21000101bc1200"},
+    {"%aeid" : "B", "#ads" : ["seg1,ad2"], "&domains" : {"example.com" : 84, "news.org" : 11}, "^cookies": "0e01d128000102ba06000102b63e000101bc1200"}
+]
+```
+
 #### Calling user defined functions in yield
 
 You can call external functions when `yield`ing to a set or a multiset; just drop a file with the same name as your `.tr` script but with `.tr.c` extension and you'll be able to call functions from that file in `yield` statements. See `test_ffi.tr` in `test/tr` directory for an example.
