@@ -220,9 +220,9 @@ char *run_length_encode(char *in, size_t size, int *out_size) {
         *out = '\0';
         return out;
     } else {
-        // Allocate twice the size of the input string
-        // which is the max amount memory we could need,
-        // in the worst case.
+        /* Allocate twice the size of the input string
+           which is the max amount memory we could need,
+           in the worst case. */
         out = malloc(size * 2);
         out[size * 2 - 1] = 0;
     }

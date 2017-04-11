@@ -1,5 +1,4 @@
 #pragma once
-#include "hll_common.h"
 /*
  * Extract field values from current item in ctx and return a string-encoded
  * tuple for `yield to` statements.
@@ -88,7 +87,6 @@ hyperloglog_t *hll_rle_decode(const char* hll_rle_str);
 
 hyperloglog_t *hll_insert(hyperloglog_t *hll, string_tuple_t *tuple);
 
-json_object * hll_to_json(hyperloglog_t * hll);
 /*
  * Fail with error.
  */

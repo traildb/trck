@@ -241,15 +241,12 @@ uint64_t qhashmurmur3_64(const void *data, size_t nbytes) {
     h1 += h2;
     h2 += h1;
 
-//    ((uint64_t *) retbuf)[0] = h1;
-//    ((uint64_t *) retbuf)[1] = h2;
 	return h1;
 }
 
 
 /* hash value space cardinality 2^64-1 */
 #define HASH_CARDINALITY ( (uint64_t)  (((int64_t)   ((uint64_t)  (1l << 63))) >> 63)   )
-//#define HASH_CARDINALITY ( 1l << 32)
 
 
 
@@ -314,8 +311,8 @@ double hll_estimate(hyperloglog_t *this) {
             zeros++;
     }
 
-    // second term approximations from the google paper 
-    // http://tech.adroll.com/blog/data/2013/07/10/hll-minhash.html
+    /* second term approximations from the google paper 
+       http://tech.adroll.com/blog/data/2013/07/10/hll-minhash.html */
     double alpha_m;
     switch (this->m) {
         case 16: alpha_m = 0.673; break;
@@ -327,11 +324,11 @@ double hll_estimate(hyperloglog_t *this) {
 	// initial estimate
     double E = alpha_m * this->m * this->m / sum;
 
-	//            / p\` 
-	//       p    |2 | 
-	//E  =  2  log|--| 
-	//            \ V/ 
-	//
+	/*            / p\` 
+	         p    |2 | 
+	  E  =  2  log|--| 
+	              \ V/ 
+	*/
    
     double H;
     if (E < 5 * this->m) {
