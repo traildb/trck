@@ -408,8 +408,9 @@ char *hll_to_string(const hyperloglog_t *hll) {
 
 hyperloglog_t *string_to_hll(const char * hll_rle )
 {
-    // get the run_length encoded HLE as a string
-    // It begins and ends with quotation marks because it is json
+    /* get the run_length encoded HLE as a string
+       It begins and ends with quotation marks because it is json 
+    */
     uint8_t hll_version = hex_byte_to_byte(&hll_rle[2]);
     hyperloglog_t *res;
     if (hll_version == 0){
