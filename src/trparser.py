@@ -18,7 +18,7 @@ tokens = [
     'TIMESTAMP', 'STRING', 'NUMBER',
     'COMMA',
     'WILDCARD', 'ARROW', 'EQ', 'LT', 'GT', 'LTE', 'GTE',
-    'SCALAR', 'HASH', 'SCALAR_RESULT', 'ARRAY', 'MULTISET',
+    'SCALAR', 'HASH', 'SCALAR_RESULT', 'ARRAY', 'MULTISET', 'HLL',
     'ID', 'WS', 'INDENT', 'NEWLINE', 'DEDENT', 'LBRACKET', 'RBRACKET',
     'LPAREN', 'RPAREN'
     ] + [r.upper() for r in reserved]
@@ -84,6 +84,10 @@ def t_HASH(t):
 
 def t_MULTISET(t):
     r'&[a-zA-Z_][a-zA-Z_0-9]*'
+    return t
+
+def t_HLL(t):
+    r'\^[a-zA-Z_][a-zA-Z_0-9]*'
     return t
 
 def t_ARRAY(t):
@@ -409,6 +413,10 @@ def p_action_yield_set(p):
 
 def p_action_yield_multiset(p):
     """ yield_var : ID TO MULTISET """
+    p[0] = {'dst': p[3], 'src': [{'_k': 'field', 'name': p[1]}]}
+
+def p_action_yield_hll(p):
+    """ yield_var : ID TO HLL """
     p[0] = {'dst': p[3], 'src': [{'_k': 'field', 'name': p[1]}]}
 
 def p_action_yield_set_tuple(p):

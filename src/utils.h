@@ -1,5 +1,4 @@
 #pragma once
-
 /*
  * Extract field values from current item in ctx and return a string-encoded
  * tuple for `yield to` statements.
@@ -13,6 +12,10 @@ typedef struct string_tuple_t {
     char buf[256];
     int len;
 } string_tuple_t;
+typedef void * set_t;
+typedef struct string_tuple_t string_tuple_t;
+typedef struct hyperloglog_t hyperloglog_t;
+typedef struct json_object json_object;
 
 #define TUPLE_ITEM_TYPE_STRING 'S'
 #define TUPLE_ITEM_TYPE_BYTES  'B'
@@ -51,6 +54,38 @@ void set_insert(set_t *dst, string_tuple_t *tuple);
 void mset_insert(set_t *dst, string_tuple_t *tuple);
 
 void set_free(set_t *s);
+
+/*
+ * Applies the run-length encoding to the `in` string.
+ * Returns a pointer to the encoded string, the caller is responsible
+ * to free the memory pointed by `out`.
+ */
+char *run_length_encode(char *in, size_t size, int *out_size);
+/*
+ * Converts string `str` to hex string and writes it to `dst`.
+ */
+void str_to_hex_str(char *dst, char *src, size_t size);
+
+/*
+ * "FF" -> 255
+ *
+ * Assumes there is indeed two chars in the buffer it is passed in,
+ * handles null terminators by ignoring them
+ */
+uint8_t hex_byte_to_byte(const char* h);
+
+
+/* Free hll struct */
+void hll_free(hyperloglog_t *hll);
+
+/* merge another hll into this one*/
+hyperloglog_t *hll_merge(hyperloglog_t *this, hyperloglog_t *other);
+
+/* Given the run-length encoded hex string representation of ah HLL,
+ * decodes it into an hyperloglog_t */
+hyperloglog_t *hll_rle_decode(const char* hll_rle_str);
+
+hyperloglog_t *hll_insert(hyperloglog_t *hll, string_tuple_t *tuple);
 
 /*
  * Fail with error.

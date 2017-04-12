@@ -64,6 +64,8 @@ def var_type(n):
         return 'composite'
     elif n.startswith('$'):
         return 'scalar'
+    elif n.startswith('^'):
+        return 'hll'
     else:
         assert(not n)
 
@@ -71,7 +73,7 @@ def var_type(n):
 def is_variable(n):
     if n == '':
         return False
-    return n[0] in '#&%$@'
+    return n[0] in '#&%$@^'
 
 
 def strip_type(v):
@@ -292,14 +294,13 @@ def compile_yield(g, c, program, current_rule_id):
             var = _yield['dst']
             if var_type(var) == 'scalar':
                 g.o("results->%s += 1;" % strip_type(var))
-            elif var_type(var) == 'set' or var_type(var) == 'multiset':
+            elif var_type(var) == 'set' or var_type(var) == 'multiset' or var_type(var) == 'hll':
                 _tuple = _yield['src']
 
                 with BRACES(g):
                     g.o("string_tuple_t tuple;")
                     g.o("string_tuple_init(&tuple);")
                     g.o("item_t i = ctx_get_item(ctx);")
-
                     for elem in _tuple:
                         with BRACES(g):
                             g.o("char val[256] = \"\";")
@@ -307,11 +308,12 @@ def compile_yield(g, c, program, current_rule_id):
                             g.o("int type = 0;")
                             compile_yield_term(g, elem, program, current_rule_id, 'val', 'len', 'type')
                             g.o("string_tuple_append(val, len, type, &tuple);")
-
                     if var_type(var) == 'set':
                         g.o("set_insert(&results->set_%s, &tuple);" % strip_type(var))
                     elif var_type(var) == 'multiset':
                         g.o("mset_insert(&results->mset_%s, &tuple);" % strip_type(var))
+                    elif var_type(var) == 'hll':
+                        g.o("results->hll_%s = hll_insert(results->hll_%s, &tuple);" % (strip_type(var), strip_type(var)))
                     else:
                         raise Exception('Bad yield: %s' % var)
             else:
@@ -409,6 +411,7 @@ class Program:
         self.yield_counters = set()
         self.yield_sets = set()
         self.yield_multisets = set()
+        self.yield_hlls = set()
 
         # list of (name, nargs) for external functions
         self.external_functions = []
@@ -458,6 +461,8 @@ def add_yield_vars(program, yield_list):
             program.yield_sets.add(strip_type(y['dst']))
         elif var_type(y['dst']) == 'multiset':
             program.yield_multisets.add(strip_type(y['dst']))
+        elif var_type(y['dst']) == 'hll':
+            program.yield_hlls.add(strip_type(y['dst']))
         else:
             assert('bad yield')
 
@@ -697,10 +702,12 @@ def gen_add_results(g, program):
         for k in program.yield_sets:
             with BRACES(g):
                 g.o("set_add(&dst->set_%s, &src->set_%s);" % (k, k))
-
         for k in program.yield_multisets:
             with BRACES(g):
                 g.o("mset_add(&dst->mset_%s, &src->mset_%s);" % (k, k))
+        for k in program.yield_hlls:
+            with BRACES(g):
+                g.o("dst->hll_%s = hll_merge(dst->hll_%s, src->hll_%s);" % (k, k, k))
 
 
 def gen_free_results(g, program):
@@ -709,6 +716,8 @@ def gen_free_results(g, program):
             g.o("set_free(&dst->set_%s);" % (k,))
         for k in program.yield_multisets:
             g.o("set_free(&dst->mset_%s);" % (k,))
+        for k in program.yield_hlls:
+            g.o("hll_free(dst->hll_%s);" %(k,))
 
 
 def gen_is_zero_result(g, program):
@@ -720,6 +729,8 @@ def gen_is_zero_result(g, program):
             g.o("&& (r->set_%s == NULL)" % (k,))
         for k in program.yield_multisets:
             g.o("&& (r->mset_%s == NULL)" % (k,))
+        for k in program.yield_hlls:
+            g.o("&& (r->hll_%s == NULL)" % (k,))
 
         g.o(";")
 
@@ -739,6 +750,8 @@ def gen_structs(g, program):
             g.o("set_t set_%s;" % k)
         for k in program.yield_multisets:
             g.o("set_t mset_%s;" % k)
+        for k in program.yield_hlls:
+            g.o("hyperloglog_t *hll_%s;" %k)
     g.o(";")
     g.o("")
 
@@ -776,13 +789,15 @@ def gen_structs(g, program):
 
 
 def gen_print(g, program):
-    with BRACES(g, "void match_save_result(results_t *results, void *arg, void (*save_int)(void *, char *, int64_t), void (*save_set)(void *, char *, set_t *), void (*save_multiset)(void *, char *, set_t *))"):
+    with BRACES(g, "void match_save_result(results_t *results, void *arg, void (*save_int)(void *, char *, int64_t), void (*save_set)(void *, char *, set_t *), void (*save_multiset)(void *, char *, set_t *), void (*save_hll)(void *, char *, hyperloglog_t *))"):
         for i, k in enumerate(program.yield_counters):
             g.o("save_int(arg, \"%s\", results->%s);" % (k, strip_type(k)))
         for i, k in enumerate(program.yield_sets):
             g.o("save_set(arg, \"#%s\", &results->set_%s);" % (k, k))
         for i, k in enumerate(program.yield_multisets):
             g.o("save_multiset(arg, \"&%s\", &results->mset_%s);" % (k, k))
+        for i, k in enumerate(program.yield_hlls):
+            g.o("save_hll(arg, \"^%s\", results->hll_%s);" % (k, k))
 
 
 def gen_db_init(g, program):
