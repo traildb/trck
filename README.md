@@ -359,6 +359,7 @@ In JSON format as returned by `trck`, variable `&result` would look like this:
 ```
 
 #### Counting things: yield field to HLL (cardinality estimator)
+Information on HLLs can be found [here](http://tech.adroll.com/blog/data/2013/07/10/hll-minhash.html)
 Sets and multisets can also be yielded as an HLL data structure encoded in hex using the syntax:
 ```haskell
 yield field1,field2 to ^result
