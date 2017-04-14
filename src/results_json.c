@@ -7,13 +7,82 @@
 #include "fns_generated.h"
 #include "foreach_util.h"
 #include "results_json.h"
+
+
 #include "results_json_internal.h"
 #include "safeio.h"
 #include "utils.h"
 
+
+const unsigned char *utf8_check(const unsigned char *s);
+
+
+void print_escaped(const char *str, int len)
+{
+    json_hex_chars = "0123456789abcdef";
+    int64_t pos = 0, start_offset = 0;
+    unsigned char c;
+    while (len--)
+    {
+        c = str[pos];
+        pos++;
+
+        switch(c)
+        {
+        case '\b':
+        case '\n':
+        case '\r':
+        case '\t':
+        case '\f':
+        case '"':
+        case '\\':
+        case '/':
+            if(c == '\b') printf("\\b");
+            else if(c == '\n') printf("\\n");
+            else if(c == '\r') printf("\\r");
+            else if(c == '\t') printf("\\t");
+            else if(c == '\f') printf("\\f");
+            else if(c == '"') printf("\\\"");
+            else if(c == '\\') printf("\\\\");
+            else if(c == '/') printf("\\/");
+            break;
+        default:
+            if(c < ' ')
+            {
+                printf("\\u00%c%c",
+                     json_hex_chars[c >> 4],
+                     json_hex_chars[c & 0xf]);
+            } else
+                putc(c, stdout);
+        }
+    }
+}
+
+
+void print_json_string(char *str, int64_t len) {
+    printf("\"");
+    if (len == -1) {
+        const unsigned char *c = utf8_check(str);
+        if (c == NULL)
+            print_escaped(str, strlen(str));
+        else {
+            print_escaped(str, c - (const unsigned char *)str);
+        }
+    } else {
+        print_escaped(str, len);
+    }
+    printf("\"");
+}
+
+
 void json_add_int(void *p, char *name, int64_t value) {
-    json_object *obj = (json_object *)p;
-    json_object_object_add(obj, name, json_object_new_int64(value));
+    int64_t *nitem = (int64_t *)p;
+
+    if (*nitem)
+        printf(",");
+    (*nitem) += 1;
+    print_json_string(name, -1);
+    printf(":%ld", value);
 }
 
 static const uint8_t HEXCHARS[] =
@@ -65,7 +134,7 @@ void string_tuple_to_json(char *tuple, char *result)
     *r = 0;
 }
 
-json_object *set_to_json(set_t *src)
+void set_to_json(set_t *src)
 {
     uint8_t index[10000];
     index[0] = '\0';
@@ -73,19 +142,24 @@ json_object *set_to_json(set_t *src)
     Word_t * pv;
     JSLF(pv, *src, index);
 
-    json_object *res = json_object_new_array();
+    printf("[");
 
+    int nitem = 0;
     while (pv) {
+        if (nitem)
+            printf(",");
+        nitem++;
+
         char buf[1000];
         string_tuple_to_json((char*)index, buf);
-        json_object_array_add(res, json_object_new_string(buf));
+        print_json_string((char *)buf, -1);
         JSLN(pv, *src, index);
     }
 
-    return res;
+    printf("]");
 }
 
-json_object *multiset_to_json(set_t *src)
+void multiset_to_json(set_t *src)
 {
     uint8_t index[10000];
     index[0] = '\0';
@@ -93,38 +167,67 @@ json_object *multiset_to_json(set_t *src)
     Word_t * pv;
     JSLF(pv, *src, index);
 
-    json_object *res = json_object_new_object();
+    printf("{");
+    int nitem = 0;
 
     while (pv) {
+        if (nitem)
+            printf(",");
+        nitem++;
+
         char buf[1000];
         string_tuple_to_json((char*)index, buf);
-        json_object_object_add(res, buf, json_object_new_int(*pv));
+        print_json_string(buf, -1);
+        printf(":%ld", *pv);
         JSLN(pv, *src, index);
     }
 
-    return res;
+    printf("}");
 }
 
 void json_add_set(void *p, char *name, set_t *value) {
-    json_object *obj = (json_object *)p;
-    json_object_object_add(obj, name, set_to_json(value));
+    int64_t *nitem = (int64_t *)p;
+
+    if (*nitem)
+        printf(",");
+    (*nitem) += 1;
+
+    print_json_string(name, -1);
+    printf(":");
+    set_to_json(value);
+
 }
 
 
 void json_add_multiset(void *p, char *name, set_t *value) {
-    json_object *obj = (json_object *)p;
-    json_object_object_add(obj, name, multiset_to_json(value));
-}
+    int64_t *nitem = (int64_t *)p;
 
-json_object *match_results_to_json(results_t *results) {
-    json_object *res = json_object_new_object();
-    match_save_result(results, res, json_add_int, json_add_set, json_add_multiset, json_add_hll);
-    return res;
+    if (*nitem)
+        printf(",");
+    (*nitem) += 1;
+
+    print_json_string(name, -1);
+    printf(":");
+    multiset_to_json(value);
 }
 
 void json_add_hll(void *p, char *name, hyperloglog_t *hll) {
-    json_object *obj = (json_object *)p;
-    json_object_object_add(obj, name, hll_to_json(hll));
+    int64_t *nitem = (int64_t *)p;
+    if (*nitem)
+        printf(",");
+    (*nitem) += 1;
+
+    print_json_string(name, -1);
+    printf(":");
+    char * hll_string = hll_to_string(hll);
+    print_json_string(hll_string, -1);
+    free(hll_string);
+}
+
+int match_results_to_json(results_t *results) {
+    int64_t nitems = 0;
+    match_save_result(results, &nitems, json_add_int, json_add_set, json_add_multiset, json_add_hll);
+    return nitems;
 }
 
 void output_groupby_result_json(groupby_info_t *gi, int i, results_t *results)
@@ -135,27 +238,37 @@ void output_groupby_result_json(groupby_info_t *gi, int i, results_t *results)
 
     results_t *pres = (results_t *)((uint8_t *)results + match_get_result_size() * i);
 
-    json_object *jtuple = match_results_to_json(pres);
+    printf("{");
+    int nitems = match_results_to_json(pres);
 
     for (int j = 0; j < gi->num_vars; j++) {
         if (gi->var_names[j][0] == '%') {
-            json_object *val = json_object_new_string_len(tuple[j].str, tuple[j].len);
-            json_object_object_add(jtuple, gi->var_names[j], val);
+            if (nitems)
+                printf(",");
+            nitems++;
+            print_json_string(gi->var_names[j], -1);
+            printf(":");
+            print_json_string(tuple[j].str, tuple[j].len);
         } else if (gi->var_names[j][0] == '#') {
-            json_object *val = json_object_new_array();
+            if (nitems)
+                printf(",");
+            nitems++;
+            print_json_string(gi->var_names[j], -1);
+            printf(":");
+            printf("[");
             for (int k = 0; k < tuple[j].len; k++) {
                 string_val_t v = tuple[j].str_set[k];
-                json_object_array_add(val, json_object_new_string_len(v.str, v.len));
+                if (k != 0)
+                    printf(",");
+                print_json_string(v.str, v.len);
             }
-            json_object_object_add(jtuple, gi->var_names[j], val);
+            printf("]");
         } else {
             CHECK(false, "not supposed to reach this while printing tuple\n");
         }
     }
 
-    const char *str = json_object_get_string(jtuple);
-    puts(str);
-    json_object_put(jtuple);
+    printf("}");
 }
 
 void output_json(groupby_info_t *gi, results_t *results)
@@ -163,9 +276,9 @@ void output_json(groupby_info_t *gi, results_t *results)
     fprintf(stderr, "Generating JSON output\n");
     if (gi == NULL || gi->num_vars == 0 || gi->merge_results) {
         /* simple non-groupby query, single result, just print it */
-        json_object *res = match_results_to_json(results);
-        printf("%s", json_object_get_string(res));
-        json_object_put(res);
+        printf("{\n");
+        int nitems = match_results_to_json(results);
+        printf("}\n");
     } else {
         /* Print results to stdout as JSON */
         printf("[\n");
