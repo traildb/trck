@@ -125,7 +125,7 @@ void dump_window_set(window_set_t *res) {
 
         char buf[33] = {0};
         tdb_uuid_hex((uint8_t *)&idx, (uint8_t *)buf);
-        fprintf(stderr, "%s,%lu,%lu\n", buf, window_start, window_end);
+        fprintf(stderr, "%s,%llu,%llu\n", buf, window_start, window_end);
         j128m_next(&res->start_ts, &pv, &idx);
     }
 }

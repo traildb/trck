@@ -12,9 +12,7 @@ typedef struct string_tuple_t {
     char buf[256];
     int len;
 } string_tuple_t;
-typedef void * set_t;
-typedef struct string_tuple_t string_tuple_t;
-typedef struct hyperloglog_t hyperloglog_t;
+
 typedef struct json_object json_object;
 
 #define TUPLE_ITEM_TYPE_STRING 'S'

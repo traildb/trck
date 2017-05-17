@@ -4,9 +4,12 @@
 #include <math.h>
 #include <json-c/json.h>
 #include <stdio.h>
+#include <stdbool.h>
+#include <Judy.h>
 
 #include "hyperloglog.h"
 #include "safeio.h"
+#include "fns_generated.h"
 #include "utils.h"
 
 /* index 0 holds the length of the array*/

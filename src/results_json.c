@@ -62,7 +62,7 @@ void print_escaped(const char *str, int len)
 void print_json_string(char *str, int64_t len) {
     printf("\"");
     if (len == -1) {
-        const unsigned char *c = utf8_check(str);
+        const unsigned char *c = utf8_check((unsigned char *)str);
         if (c == NULL)
             print_escaped(str, strlen(str));
         else {
@@ -82,7 +82,7 @@ void json_add_int(void *p, char *name, int64_t value) {
         printf(",");
     (*nitem) += 1;
     print_json_string(name, -1);
-    printf(":%ld", value);
+    printf(":%lld", value);
 }
 
 static const uint8_t HEXCHARS[] =
