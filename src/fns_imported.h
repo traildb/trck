@@ -55,7 +55,7 @@ uint64_t ctx_get_cookie_timestamp_filter_start(ctx_t *);
 void ctx_advance(ctx_t *ctx);
 
 /* Get current position within the trails */
-int ctx_get_position(ctx_t *ctx);
+int64_t ctx_get_position(ctx_t *ctx);
 
 /* Check if we're at the end of trail */
 bool ctx_end_of_trail(ctx_t *ctx);

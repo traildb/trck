@@ -14,8 +14,8 @@ struct db_t {
 };
 
 struct ctx_t {
-    int num_events;
-    int event_size;
+    int64_t num_events;
+    int64_t event_size;
 
     uint8_t *buf;
     size_t buf_size;
@@ -25,7 +25,7 @@ struct ctx_t {
 
     tdb_event *current_event;
 
-    int position;
+    int64_t position;
     int stats; /* used for jit-like optimizations */
     perf_stats_t perf_stats;
     const uint8_t *cookie;

@@ -129,7 +129,7 @@ void ctx_advance(ctx_t * ctx)
     ctx->current_event = NULL;
 }
 
-int ctx_get_position(ctx_t *ctx)
+int64_t ctx_get_position(ctx_t *ctx)
 {
     return ctx->position;
 }
