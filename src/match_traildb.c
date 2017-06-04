@@ -12,6 +12,7 @@
 #include <getopt.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sysexits.h>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -1104,6 +1105,20 @@ int run_query(char **traildb_paths, int num_paths,
 }
 
 
+void print_usage(FILE *stream, char *progname) {
+
+  fprintf(stream,
+          "Usage: %s [OPTIONS] TRAILDB [TRAILDB...]\n\n",
+          progname);
+  fprintf(stream, "OPTIONS:\n");
+  fprintf(stream, "  -p  --params        PARAMS\n");
+  fprintf(stream, "  -o  --output-format FORMAT\n");
+  fprintf(stream, "  -f  --filter        FILTER\n");
+  fprintf(stream, "  -w  --window-file   FILE\n");
+
+}
+
+
 int parse_args(int argc, char **argv,
                char **params_config_file,
                char **filter,
@@ -1123,6 +1138,7 @@ int parse_args(int argc, char **argv,
             {"output-format", required_argument, 0,   'o' },
             {"filter",    required_argument, 0,   'f' },
             {"window-file",required_argument, 0,   'w' },
+            {"help",optional_argument, 0,   'h' },
             {0,           0,                 0,    0 }
         };
 
@@ -1136,6 +1152,11 @@ int parse_args(int argc, char **argv,
           case 'f': *filter = optarg; break;
           case 'w': *window_file = optarg; break;
           case 'o': *format = optarg; break;
+          case '?':
+          case 'h':
+            print_usage(stderr, argv[0]);
+            exit(EX_USAGE);
+            break;
       }
     }
     CHECK(optind < argc, "required: traildb path");
@@ -1175,8 +1196,8 @@ int main(int argc, char **argv)
                              &filter, &format, &window_file);
 
     if (num_dbs == 0) {
-        fprintf(stderr, "usage: %s TRAILDB_PATH [groupby FIELD]\n", argv[0]);
-        return 1;
+      print_usage(stderr, argv[0]);
+      exit(EX_USAGE);
     }
 
     if (num_dbs > 1 && !match_no_rewind()) {
