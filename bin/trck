@@ -47,8 +47,8 @@ def compiler(use_openmp):
     else:
         return 'gcc'
 
-def compile_dynamic(sources, src_path, gen_path, output_file, use_openmp):
-    libs = LIBS[:]
+def compile_dynamic(sources, src_path, gen_path, output_file, use_openmp, extra_libs=[]):
+    libs = LIBS[:] + extra_libs
     flags = FLAGS[:]
 
     if use_openmp:
@@ -69,8 +69,8 @@ def compile_dynamic(sources, src_path, gen_path, output_file, use_openmp):
                            libs + \
                            ["-o", output_file])
 
-def compile_static(sources, src_path, gen_path, output_file, use_openmp):
-    libs = LIBS[:]
+def compile_static(sources, src_path, gen_path, output_file, use_openmp, extra_libs=[]):
+    libs = LIBS[:] + extra_libs
     flags = FLAGS[:]
     if use_openmp:
         libs.append('-lgomp')
@@ -124,6 +124,7 @@ def main():
     parser.add_argument("--gen-h", help="compile header only", action='store_true', default=False)
     parser.add_argument("--output-file", "-o", help="output path for compiled binary", default='matcher-traildb')
     parser.add_argument("--params-file", "-p", help="path to parameter file")
+    parser.add_argument('--library', '-l', action='append', help="additional library to link to", default=[])
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--dynamic", action="store_true", help="link dependencies dynamically (default)")
@@ -205,7 +206,9 @@ def main():
                 if os.path.isfile(args.program_name + ".c"):
                     sources.append(args.program_name + ".c")
 
-                if compile_method(sources, src_path, gen_path, args.output_file, use_openmp=args.use_openmp) != 0:
+                if compile_method(sources, src_path, gen_path, args.output_file,
+                                  use_openmp=args.use_openmp,
+                                  extra_libs=[('-l' + x) for x in (args.library or [])]) != 0:
                     print_("Compilation failed", level='error')
                     sys.exit(1)
             finally:
