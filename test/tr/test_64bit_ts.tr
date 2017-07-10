@@ -1,0 +1,22 @@
+start ->
+    receive
+        type = "cli", advertisable_eid = "a-1" -> yield $match
+        type = "cli", advertisable_eid = "a/2" -> yield $match
+        type = "cli", advertisable_eid = "a^3" -> yield $match
+        * -> repeat
+
+
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":10000000000, "advertisable_eid" : "a-1"},
+--                      {"type":"cli", "timestamp":10000000001, "advertisable_eid" : "a/2"},
+--                      {"type":"cli", "timestamp":10000000002, "advertisable_eid" : "a^3"}
+--                    ]}],
+--         "expected" :
+--                      {"$match" : 3}
+--     }
+-- ]
+-- }

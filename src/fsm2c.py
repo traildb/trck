@@ -2,7 +2,7 @@ import re
 import sys
 import json
 
-EXPIRES_NEVER = 4000000000
+EXPIRES_NEVER = 'UINT64_MAX'
 
 
 class BRACES:
@@ -188,7 +188,7 @@ def enter_rule(g, ri, program):
                     with BRACES(g, "else"):
                         g.o("state->outers[i].window_expires = timestamp + %d;" % program.get_rule_window_duration(ri))
                 else:
-                    g.o("state->outers[i].window_expires = %d;" % EXPIRES_NEVER)
+                    g.o("state->outers[i].window_expires = %s;" % EXPIRES_NEVER)
                 g.o("break;")
     else:
         if program.get_rule_window_duration(ri) is not None:
@@ -197,7 +197,7 @@ def enter_rule(g, ri, program):
             with BRACES(g, "else"):
                 g.o("state->window_expires = timestamp + %s;" % (program.get_rule_window_duration(ri)))
         else:
-            g.o("state->window_expires = %d;" % EXPIRES_NEVER)
+            g.o("state->window_expires = %s;" % EXPIRES_NEVER)
 
 
 def compile_yield_term(g, term, program, current_rule_id, _val, _len, _type):
@@ -826,7 +826,7 @@ def gen_db_init(g, program):
 
 def gen_trail_init(g, program):
     with BRACES(g, "void match_trail_init(state_t *state)"):
-        g.o("state->window_expires = %d;" % EXPIRES_NEVER)
+        g.o("state->window_expires = %s;" % EXPIRES_NEVER)
         if not program.no_rewind:
             g.o("state->start = 0;")
         g.o("state->ri = %d;" % program.entrypoint_id)
@@ -836,7 +836,7 @@ def gen_trail_init(g, program):
 
 def gen_is_initial_state(g, program):
     with BRACES(g, "bool match_is_initial_state(state_t *state)"):
-        g.o("if (state->window_expires != 0 && state->window_expires != %d) return false;" % EXPIRES_NEVER)
+        g.o("if (state->window_expires != 0 && state->window_expires != %s) return false;" % EXPIRES_NEVER)
         if not program.no_rewind:
             g.o("if (state->start != 0) return false;")
         g.o("if (state->ri != %d) return false;" % program.entrypoint_id)
@@ -916,7 +916,7 @@ def gen_header(rules, groupby, out=sys.stdout):
     preprocess(program)
     g.o("#ifndef __OUT_TRAILDB_H__")
     g.o("#define __OUT_TRAILDB_H__")
-    g.o("#define EXPIRES_NEVER %d" % EXPIRES_NEVER)
+    g.o("#define EXPIRES_NEVER %s" % EXPIRES_NEVER)
     g.o("#include <json-c/json.h>")
     g.o('#include "utils.h"')
     gen_structs(g, program)
