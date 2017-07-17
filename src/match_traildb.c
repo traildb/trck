@@ -411,6 +411,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
 
         uint64_t num_windows_applied = 0;
         uint64_t num_trails_done_global = 0;
+        uint64_t state_size_global = 0;
 
         /* Anything in the next block is executed in parallel by all threads */
         #pragma omp parallel
@@ -483,6 +484,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
         gettimeofday(&tval1, NULL);
 
         uint64_t num_trails_done = 0;
+        uint64_t state_size = 0;
 
         fprintf(stderr, "Opening traildb took %" PRIu64 " seconds\n", time(NULL) - tstart);
 
@@ -588,7 +590,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
 
                 int num_eq_states; /* number of identical states in a row */
                 state_t *saved_state = sv_iterate_next_edge(&svi, &num_eq_states);
-                if (!saved_state)
+                if (!saved_state && (num_eq_states == -1))
                     num_eq_states = gi->num_tuples - j;
 
                 results_t r = {0};
@@ -721,11 +723,12 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
                     tval_diff.tv_usec += 1000000;
                 }
 
-                fprintf(stderr, "%ld.%03ld s per 1M cookies, %.1f match calls per cookie (%" PRIu64 "), %" PRIu64 " times groupby not used, thread %d\n",
+                fprintf(stderr, "%ld.%03ld s per 1M cookies, %.1f match calls per cookie (%" PRIu64 "), %" PRIu64 " times groupby not used, %.1f bytes of state per cookie, thread %d\n",
                         (long int)tval_diff.tv_sec, (long int)tval_diff.tv_usec,
                         ctx.perf_stats.match_calls/100000.,
                         ctx.perf_stats.match_calls,
                         ctx.perf_stats.early_breaks,
+                        (double)state_size / num_trails_done,
                         tid);
 
                 tval1 = tval2;
@@ -738,8 +741,11 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
             }
 
 
-            statevec_t *out_sv = sv_finish(&out_svc);
+            uint64_t state_vec_size = 0;
 
+            statevec_t *out_sv = sv_finish(&out_svc, &state_vec_size);
+
+            state_size += state_vec_size;
             /*
              * Insert state vector into thread-local states array if
              * not empty.
@@ -799,31 +805,34 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
             j128m_free(local_empty_states);
             free(local_empty_states);
 
-            #pragma omp atomic
             db_perf_stats.match_calls += ctx.perf_stats.match_calls;
+
+            num_trails_done_global += num_trails_done;
+
+            state_size_global += state_size;
+
         }
 
-
-        #pragma omp atomic
-        num_trails_done_global += num_trails_done;
 
         } // omp parallel
 
         uint32_t tend = (uint32_t) time(NULL);
 
         uint64_t num_states = j128m_num_keys(states);
-        fprintf(stderr, "done processing traildb %s," \
+        fprintf(stderr, "done processing traildb %s, " \
                         "%" PRIu64 "s wallclock, " \
-                        "%" PRIu64 " states " \
-                        "%" PRIu64 " match calls " \
-                        "%" PRIu64 " windows applied " \
-                        "to %" PRIu64 " cookies\n",
+                        "%" PRIu64 " state vectors, " \
+                        "%" PRIu64 " match calls, " \
+                        "%" PRIu64 " windows applied, " \
+                        "to %" PRIu64 " cookies, " \
+                        "%" PRIu64 " MiB state size\n",
                 traildb_path,
                 (tend - tstart),
                 num_states,
                 db_perf_stats.match_calls,
                 num_windows_applied,
-                num_trails_done_global);
+                num_trails_done_global,
+                state_size_global / (1024*1024));
     }
 
 
@@ -874,7 +883,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
                results are guaranteed to be the same.
             */
             state_t *pstate = sv_iterate_next_edge(&svi, &num_eq_states);
-            if (pstate == NULL)
+            if ((pstate == NULL) && (num_eq_states == -1))
                 num_eq_states = gi->num_tuples - j;
 
             results_t r = {0};

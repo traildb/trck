@@ -25,6 +25,23 @@
  * (statevec_t *)NULL, and no memory is allocated.
  */
 
+sv_counter_t make_counter(int n, bool is_empty_state)
+{
+    if (is_empty_state)
+        return (sv_counter_t)COUNTER_EMPTY_STATE_FLAG | (sv_counter_t)n;
+    else
+        return (sv_counter_t)n;
+}
+
+bool is_empty_state_counter(sv_counter_t c)
+{
+    return COUNTER_EMPTY_STATE_FLAG & c;
+}
+
+int counter_get_count(sv_counter_t c)
+{
+    return c & (sv_counter_t)MAX_COUNTER_VALUE;
+}
 
 /* Initialize iterator. */
 void sv_iterate_start(statevec_t *sv, statevec_iterator_t *svi)
@@ -37,24 +54,36 @@ void sv_iterate_start(statevec_t *sv, statevec_iterator_t *svi)
  * Advance to the next state using the iterator. May return NULL if next state
  * is empty (i.e. equal to the default state).
  */
-state_t *sv_iterate_next(statevec_iterator_t *svi)
+state_t *sv_iterate_next(statevec_iterator_t *svi, bool* is_end)
 {
-    if (svi->sv == NULL)
+    if (svi->sv == NULL) {
+        *is_end = true;
         return NULL;
+    }
     else {
         sv_counter_t *pcounter = (sv_counter_t *)svi->sv;
 
-        if (*pcounter == 0)
+        if (*pcounter == 0) {
+            *is_end = true;
             return NULL;
+        }
 
-        state_t *res = (state_t *)(svi->sv + sizeof(sv_counter_t));
+        state_t *res = NULL;
+        if (!is_empty_state_counter(*pcounter))
+            res = (state_t *)(svi->sv + sizeof(sv_counter_t));
+
         svi->i++;
 
-        if (svi->i >= *pcounter) {
+        if (svi->i >= counter_get_count(*pcounter)) {
             svi->i = 0;
             /* advance to the next item in RLE */
-            svi->sv += (sizeof(state_t) + sizeof(sv_counter_t));
+            if (!is_empty_state_counter(*pcounter))
+                svi->sv += (sizeof(state_t) + sizeof(sv_counter_t));
+            else
+                svi->sv += sizeof(sv_counter_t);
         }
+
+        *is_end = false;
         return res;
     }
 }
@@ -67,22 +96,49 @@ state_t *sv_iterate_next_edge(statevec_iterator_t *svi, int *num_states)
     } else {
         sv_counter_t *pcounter = (sv_counter_t *)svi->sv;
 
-        if (pcounter == NULL) {
-            *num_states = -1;
-            return NULL;
-        }
-
         if (*pcounter == 0) {
             *num_states = -1;
             return NULL;
         }
 
-        state_t *res = (state_t *)(svi->sv + sizeof(sv_counter_t));
-        *num_states = *pcounter - svi->i;
-
+        state_t *res = NULL;
+        *num_states = counter_get_count(*pcounter) - svi->i;
         svi->i = 0;
-        /* advance to the next item in RLE */
-        svi->sv += (sizeof(state_t) + sizeof(sv_counter_t));
+
+        while (*num_states < INT_MAX - MAX_COUNTER_VALUE) {
+            if (!is_empty_state_counter(*pcounter)) {
+                res = (state_t *)(svi->sv + sizeof(sv_counter_t));
+                svi->sv += (sizeof(state_t) + sizeof(sv_counter_t));
+            } else {
+                res = NULL;
+                svi->sv += sizeof(sv_counter_t);
+            }
+
+            sv_counter_t *pnext_counter = (sv_counter_t *)svi->sv;
+
+            if (*pnext_counter == 0)
+                break;
+
+            if (is_empty_state_counter(*pnext_counter) && (res == NULL)) {
+                /* next state is empty too */
+                *num_states += counter_get_count(*pnext_counter);
+                pcounter = pnext_counter;
+                continue;
+            }
+
+            if (!is_empty_state_counter(*pnext_counter) && (res != NULL)) {
+                /* next state is the same as last state */
+                state_t *pnext_state = (state_t *)(svi->sv + sizeof(sv_counter_t));
+                if (match_same_state(pnext_state, res)) {
+                    *num_states += counter_get_count(*pnext_counter);
+                    pcounter = pnext_counter;
+                    continue;
+                }
+            }
+
+            break;
+        }
+
         return res;
     }
 }
@@ -93,8 +149,9 @@ void sv_dump(statevec_t *sv)
     sv_iterate_start(sv, &svi);
     int n = 0;
     while(1) {
-        state_t *st = sv_iterate_next(&svi);
-        if (st == NULL)
+        bool is_end = false;
+        state_t *st = sv_iterate_next(&svi, &is_end);
+        if (is_end)
             break;
 
         if (!match_is_initial_state(st))
@@ -123,6 +180,9 @@ void sv_create(statevec_constructor_t *svc, int max_items)
         svc->buf = malloc(max_size_bytes);
     }
 
+    svc->plast_counter = NULL;
+    svc->plast_state = NULL;
+
     svc->size = 0;
 }
 
@@ -136,30 +196,38 @@ void sv_free_constructor(statevec_constructor_t *svc)
 sv_counter_t *sv_append_item_internal(statevec_constructor_t *svc,
                                       state_t *pstate)
 {
-    svc->size += sizeof(state_t) + sizeof(sv_counter_t);
-    CHECK(svc->size <= svc->max_size_bytes, "sv overflow");
-
-    sv_counter_t *pcounter = (sv_counter_t *)&svc->buf[svc->size - ST_PLUS_C];
-    state_t *plast_state = (state_t *)&svc->buf[svc->size - sizeof(state_t)];
-    *pcounter = 1;
-    memcpy(plast_state, pstate, sizeof(state_t));
-    return pcounter;
+    if (!match_is_initial_state(pstate)) {
+        svc->size += ST_PLUS_C;
+        CHECK(svc->size <= svc->max_size_bytes, "sv overflow");
+        sv_counter_t *pcounter = (sv_counter_t *)&svc->buf[svc->size - ST_PLUS_C];
+        state_t *plast_state = (state_t *)&svc->buf[svc->size - sizeof(state_t)];
+        *pcounter = make_counter(1, false);
+        memcpy(plast_state, pstate, sizeof(state_t));
+        return pcounter;
+    } else {
+        svc->size += sizeof(sv_counter_t);
+        sv_counter_t *pcounter = (sv_counter_t *)&svc->buf[svc->size - sizeof(sv_counter_t)];
+        *pcounter = make_counter(1, true);
+        return pcounter;
+    }
 }
 
 void sv_append(statevec_constructor_t *svc, state_t *pstate, int num_states)
 {
     sv_counter_t *pcounter = NULL;
-    state_t *plast_state = (state_t *)&svc->buf[svc->size - sizeof(state_t)];
+    state_t *plast_state = svc->plast_state;
 
-    if (svc->size == 0 || (!match_same_state(plast_state, pstate))) {
+    if ((svc->size == 0)
+            || ((plast_state == NULL) && !match_is_initial_state(pstate))
+            || ((plast_state != NULL) && !match_same_state(plast_state, pstate))) {
         num_states -= 1;
         pcounter = sv_append_item_internal(svc, pstate);
     } else {
-        pcounter = (sv_counter_t *)&svc->buf[svc->size - ST_PLUS_C];
+        pcounter = svc->plast_counter;
     }
 
     while (num_states) {
-        int num_appended = MIN(MAX_COUNTER_VALUE - *pcounter, num_states);
+        int num_appended = MIN(MAX_COUNTER_VALUE - counter_get_count(*pcounter), num_states);
         *pcounter += num_appended;
         num_states -= num_appended;
 
@@ -168,31 +236,38 @@ void sv_append(statevec_constructor_t *svc, state_t *pstate, int num_states)
             num_states -= 1;
         }
     }
+
+    svc->plast_counter = pcounter;
+    if (is_empty_state_counter(*pcounter))
+        svc->plast_state = NULL;
+    else
+        svc->plast_state = (state_t *)&svc->buf[svc->size - sizeof(state_t)];
 }
 
-statevec_t *sv_finish(statevec_constructor_t *svc)
+statevec_t *sv_finish(statevec_constructor_t *svc, uint64_t *out_size_bytes)
 {
     /* if all we have is initial states, return NULL */
-    state_t *pfirst_state = (state_t *)&svc->buf[sizeof(sv_counter_t)];
+    sv_counter_t *pfirst_counter = (sv_counter_t *)&svc->buf;
 
     if (svc->size == 0)
         return NULL;
 
-    if ((match_is_initial_state(pfirst_state)) &&
-        (svc->size == sizeof(state_t) + sizeof(sv_counter_t)))
+    if ((is_empty_state_counter(*pfirst_counter)) &&
+        (svc->size == sizeof(sv_counter_t)))
     {
         return NULL;
     }
 
-    /* if last state is initial, don't copy it */
-    state_t *plast_state = (state_t *)&svc->buf[svc->size - sizeof(state_t)];
 
     int total_bytes = -1;
-    if (match_is_initial_state(plast_state)) {
-        total_bytes = svc->size - sizeof(state_t) - sizeof(sv_counter_t);
+    if (svc->plast_state == NULL) {
+        total_bytes = svc->size - sizeof(sv_counter_t);
     } else {
         total_bytes = svc->size;
     }
+
+    if (out_size_bytes)
+        *out_size_bytes = total_bytes + sizeof(sv_counter_t);
 
     statevec_t *res = malloc(total_bytes + sizeof(sv_counter_t));
     memcpy(res, svc->buf, total_bytes);
@@ -214,7 +289,7 @@ void test1() {
     for (int i = 0; i < sizeof(states) / sizeof(state_t); i++)
         sv_append(&svc, &states[i], 1);
 
-    statevec_t *sv = sv_finish(&svc);
+    statevec_t *sv = sv_finish(&svc, NULL);
     CHECK(sv == NULL, "sv == NULL");
 }
 
@@ -233,15 +308,16 @@ void test2() {
     for (int i = 0; i < sizeof(states) / sizeof(state_t); i++)
         sv_append(&svc, &states[i], 1);
 
-    statevec_t *sv = sv_finish(&svc);
+    statevec_t *sv = sv_finish(&svc, NULL);
     CHECK(sv != NULL, "sv!=NULL");
 
     statevec_iterator_t svi;
     sv_iterate_start(sv, &svi);
     int n = 0;
     while(1) {
-        state_t *s = sv_iterate_next(&svi);
-        if (s == NULL)
+        bool is_end = false;
+        state_t *s = sv_iterate_next(&svi, &is_end);
+        if (is_end)
             break;
         CHECK(s->ri == n, "s->ri == %d /= %d", s->ri, n);
         n++;
@@ -268,15 +344,16 @@ void test3() {
     for (int i = 0; i < sizeof(states) / sizeof(state_t); i++)
         sv_append(&svc, &states[i], 1);
 
-    statevec_t *sv = sv_finish(&svc);
+    statevec_t *sv = sv_finish(&svc, NULL);
     CHECK(sv != NULL, "sv!=NULL");
 
     statevec_iterator_t svi;
     sv_iterate_start(sv, &svi);
     int n = 0;
     while(1) {
-        state_t *s = sv_iterate_next(&svi);
-        if (s == NULL)
+        bool is_end = false;
+        state_t *s = sv_iterate_next(&svi, &is_end);
+        if (is_end)
             break;
         CHECK(s->ri == states[n].ri, "s->ri == %d /= %d", s->ri, states[n].ri);
         n++;

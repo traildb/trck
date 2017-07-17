@@ -1,0 +1,32 @@
+foreach %aeid in @params
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid -> cont
+            * -> repeat
+    cont ->
+        receive
+            type = "pxl", advertisable_eid = %aeid -> yield $match, repeat
+            * -> repeat
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "desc" : "Test for large foreach loops",
+--         "trails" : [{"abcd0" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "abcd"},
+--                      {"type":"cli", "timestamp":1,   "advertisable_eid" : "defg"},
+--                      {"type":"imp", "timestamp":6,   "advertisable_eid" : "hijk"}
+--                    ]},
+--                    {"abcd0" : [
+--                      {"type":"pxl", "timestamp":100, "advertisable_eid" : "abcd"},
+--                      {"type":"imp", "timestamp":101, "advertisable_eid" : "prst"},
+--                      {"type":"pxl", "timestamp":150, "advertisable_eid" : "defg"},
+--                      {"type":"pxl", "timestamp":151, "advertisable_eid" : "defg"}
+--                    ]}],
+--         "expected" : [
+--                      {"%aeid" : "abcd", "$match" : 1},
+--                      {"%aeid" : "defg", "$match" : 2}
+--                     ]
+--     }
+-- ]
+-- }

@@ -61,7 +61,12 @@ for ((x=0; x<$NUM_TESTS; x += 1 )) do
         echo "$PARAMS" >/tmp/params.json
         PARAM_ARG='--params /tmp/params.json'
     else
-        PARAM_ARG=""
+        if [ -f "$SOURCE.params.json" ]; then
+            cp "$SOURCE.params.json" /tmp/params.json
+            PARAM_ARG='--params /tmp/params.json'
+        else
+            PARAM_ARG=""
+        fi
     fi
 
     if [ -f $SOURCE.window.csv ]; then

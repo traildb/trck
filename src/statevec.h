@@ -14,7 +14,8 @@
  */
 
 typedef uint16_t sv_counter_t;
-#define MAX_COUNTER_VALUE 65535
+#define MAX_COUNTER_VALUE 0x7fff
+#define COUNTER_EMPTY_STATE_FLAG 0x8000
 
 typedef uint8_t statevec_t;
 
@@ -32,7 +33,7 @@ void sv_iterate_start(statevec_t *sv, statevec_iterator_t *svi);
  * Advance to the next state using the iterator. May return NULL if next state
  * is empty (i.e. equal to initial state).
  */
-state_t *sv_iterate_next(statevec_iterator_t *svi);
+state_t *sv_iterate_next(statevec_iterator_t *svi, bool *is_end);
 
 /*
  * Advance to the next state, skipping duplicates. num_state will contain the
@@ -47,6 +48,8 @@ typedef struct statevec_constructor_t {
     uint8_t *buf;
     int size;
     int max_size_bytes;
+    sv_counter_t *plast_counter;
+    state_t *plast_state;
 } statevec_constructor_t;
 
 /************************ constructing vectors *******************************/
@@ -66,6 +69,6 @@ void sv_free_constructor(statevec_constructor_t *svc);
 void sv_append(statevec_constructor_t *svc, state_t *pstate, int num_states);
 
 /* Finish constructing a vector. */
-statevec_t *sv_finish(statevec_constructor_t *svc);
+statevec_t *sv_finish(statevec_constructor_t *svc, uint64_t *out_size_bytes);
 
 void sv_dump(statevec_t *sv);

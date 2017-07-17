@@ -353,6 +353,7 @@ def balance_window_rules(g, src_rule, dst_rule, program):
         raise Exception("Invalid transition: jumping between unrelated window blocks %s->%s" % (src_rule, dst_rule))
 
     g.o("state->outers[%d].id = -1;" % len(program.rule_windows[dst_rule]))
+    g.o("state->outers[%d].window_expires = 0;" % len(program.rule_windows[dst_rule]))
 
 
 def compile_clause_action(g, ri, ci, c, program):
@@ -578,6 +579,8 @@ def compile_block(g, ri, r, program):
 
     if ri == 0 and program.has_window_rules:
         g.o("state->outers[0].id = -1;")
+        g.o("state->outers[0].window_expires = 0; ")
+
     g.o('if (ctx_end_of_trail(ctx)) goto STOP;')
     with BRACES(g, "while (1)"):
         g.o("item = ctx_get_item(ctx);")
@@ -605,6 +608,7 @@ def compile_block(g, ri, r, program):
                     with BRACES(g, "if (!within_window)"):
                         g.o("int outer_id = state->outers[i].id;")
                         g.o("state->outers[i].id = -1;")
+                        g.o("state->outers[i].window_expires = 0;")
                         g.o('DBG_PRINTF("exiting outer %d\\n", outer_id);')
                         with BRACES(g, "switch (outer_id)"):
                             for oi in program.window_rule_ids:
@@ -832,6 +836,7 @@ def gen_trail_init(g, program):
         g.o("state->ri = %d;" % program.entrypoint_id)
         if program.has_window_rules:
             g.o("state->outers[0].id = -1;")
+            g.o("state->outers[0].window_expires = 0;")
 
 
 def gen_is_initial_state(g, program):
