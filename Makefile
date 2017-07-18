@@ -1,8 +1,10 @@
 VERSION?=$(shell git describe --long --abbrev=5 --match "v*" | perl -ple 's/^v(([0-9]+)(\.[0-9]+)+)-([0-9]+)-([^-]+)/$$1-$$4-h$$5/')
 
-INCLUDEPATH=-Ideps/traildb/src -Ideps/msgpack-c/include
+INCLUDEPATH=-Ideps/msgpack-c/include -I/usr/local/include
 
 all: src/parsetab.py lib/libtrck.a bin/gettrail bin/gettrail_tdb
+
+.PHONY: clean install all
 
 clean:
 	rm src/out_*.c src/out_*.h src/parsetab.py lib/* || true
@@ -29,23 +31,19 @@ install: msgpack all
 	chmod +x $(addprefix $(bindir), /trck)
 	#cp bin/gettrail bin/gettrail_tdb $(bindir)/
 
-CSRCS = foreach_util.c mempool.c traildb_filter.c distinct.c utf8_check.c results_json.c results_msgpack.c utils.c judy_128_map.c window_set.c ctx.c db.c hyperloglog.c
-COBJS  = $(addprefix lib/, $(patsubst %.c,%.o,$(CSRCS)))
+CSRCS = foreach_util.c mempool.c traildb_filter.c distinct.c utf8_check.c results_json.c results_msgpack.c utils.c judy_128_map.c window_set.c ctx.c db.c hyperloglog.c xxhash/xxhash.c judy_str_map.c
+COBJS  = $(addprefix lib/, $(notdir $(patsubst %.c,%.o,$(CSRCS))))
 
 msgpack:
 	cd deps/msgpack-c && cmake . && make && make install
 
-lib/xxhash.o: deps/traildb/src/xxhash/xxhash.c
-	$(CC) -c -std=c11 -O3 -g $(CFLAGS) -o $@ $^
-
-
-lib/judy_str_map.o: deps/traildb/src/judy_str_map.c 
-	$(CC) -c -std=c11 -O3 -g $(CFLAGS) -lJudy -o $@ $^
+lib/xxhash.o: src/xxhash/xxhash.c
+	$(CC) -c -std=c11 -O3 -g $(INCLUDEPATH) $(CFLAGS) -o $@ $^ $(CLIBS)
 
 lib/%.o: src/%.c
 	$(CC) -c -std=c11 -O3 -g $(INCLUDEPATH) $(CFLAGS) -o $@ $^ $(CLIBS)
 
-lib/libtrck.a: $(COBJS) lib/judy_str_map.o lib/xxhash.o
+lib/libtrck.a: $(COBJS)
 	$(AR) -ruvs $@ $^
 
 bin/gettrail: src/gettrail.c
