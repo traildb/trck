@@ -62,7 +62,7 @@ Matching trail patterns reliably can be very tricky because of a large number of
 
 On OSX, you'll need to install a few packages from `brew`:
 ```
-brew install homebrew/boneyard/judy msgpack google-perftools clang-omp
+brew install homebrew/boneyard/judy msgpack google-perftools llvm
 ```
 
 You'll also need to install [TrailDB](http://traildb.io/docs/getting_started/). As of time of writing, it is recommended to install TrailDB from source as the `brew` version has a multithreading bug.

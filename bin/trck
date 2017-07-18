@@ -30,8 +30,7 @@ FLAGS = ["-std=c99",
         "-g",
         "-Wall",
         "-Wno-unused-variable",
-        "-Wno-unused-label",
-        "-I", make_absolute("../deps/traildb/src/")]
+        "-Wno-unused-label"]
 
 def add_debug_flags(flags):
     if os.getenv('DEBUG'):
@@ -43,7 +42,7 @@ def compiler(use_openmp):
     if os.getenv('CC'):
         return os.getenv('CC')
     elif sys.platform == 'darwin' and use_openmp:
-        return 'clang-omp'
+        return '/usr/local/opt/llvm/bin/clang'
     else:
         return 'gcc'
 
@@ -53,7 +52,8 @@ def compile_dynamic(sources, src_path, gen_path, output_file, use_openmp, extra_
 
     if use_openmp:
         if sys.platform == 'darwin':
-            libs.append('-liomp5')
+            flags.append('-L/usr/local/opt/llvm/lib')
+            pass
         else:
             libs.append('-lgomp')
 
@@ -62,6 +62,14 @@ def compile_dynamic(sources, src_path, gen_path, output_file, use_openmp, extra_
         flags.append('-Wno-unknown-pragmas')
 
     add_debug_flags(flags)
+    print ' '.join([compiler(use_openmp)] + flags + \
+                           ["-I", gen_path] + \
+                           ["-I", src_path] + \
+                           sources + \
+                           libs + \
+                           ["-o", output_file])
+
+
     return subprocess.call([compiler(use_openmp)] + flags + \
                            ["-I", gen_path] + \
                            ["-I", src_path] + \
