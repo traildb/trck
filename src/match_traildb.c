@@ -486,7 +486,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
         uint64_t num_trails_done = 0;
         uint64_t state_size = 0;
 
-        fprintf(stderr, "Opening traildb took %" PRIu64 " seconds\n", time(NULL) - tstart);
+        fprintf(stderr, "Opening traildb took %" PRIu64 " seconds (tid=%d)\n", time(NULL) - tstart, tid);
 
         uint64_t num_trails = 0;
 
@@ -533,7 +533,11 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
              * array
              */
             PWord_t pv;
+
+            #pragma omp critical
+            {
             pv = j128m_get(states, *(__uint128_t *)cookie);
+            }
 
             statevec_t *in_sv = pv ? *(statevec_t **)pv : NULL;
             statevec_iterator_t svi;

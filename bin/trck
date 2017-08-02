@@ -28,9 +28,11 @@ LIBS = ["-ltraildb", make_absolute("../lib/libtrck.a"),
 
 FLAGS = ["-std=c99",
         "-g",
+        "-pthread",
         "-Wall",
         "-Wno-unused-variable",
-        "-Wno-unused-label"]
+        "-Wno-unused-label",
+        "-I", make_absolute("../deps/traildb/src/")] + (os.getenv("CFLAGS").split() if os.getenv("CFLAGS") else [])
 
 def add_debug_flags(flags):
     if os.getenv('DEBUG'):
@@ -55,7 +57,8 @@ def compile_dynamic(sources, src_path, gen_path, output_file, use_openmp, extra_
             flags.append('-L/usr/local/opt/llvm/lib')
             pass
         else:
-            libs.append('-lgomp')
+            if os.getenv('CC') == 'gcc':
+                libs.append('-lgomp')  #  don't need this for llvm
 
         flags.append('-fopenmp')
     else:
