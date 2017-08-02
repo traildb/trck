@@ -22,10 +22,10 @@ libdir?=/usr/lib
 install: msgpack all
 	install -m 0755 -d $(datarootdir)/trck/src $(datarootdir)/trck/bin $(datarootdir)/trck/lib
 	install -m 0755 -d $(includedir)/xxhash
-	install -m 0644 -t $(datarootdir)/trck/src/ src/*
+	install -m 0644 -t $(datarootdir)/trck/src/ src/*.c src/*.py src/*.h
 	install -m 0644 -t $(datarootdir)/trck/lib/ lib/*
 	install -m 0644 -t $(datarootdir)/trck/bin/ bin/*
-	install -m 0644 -t $(includedir)/xxhash/ deps/traildb/src/xxhash/*.h
+	install -m 0644 -t $(includedir)/xxhash/ src/xxhash/*.h
 	install -m 0644 -t $(includedir) deps/traildb/src/*.h
 	echo 'exec python $(addprefix $(datarootdir), /trck/bin/trck) $$@' >$(addprefix $(bindir), /trck)
 	chmod +x $(addprefix $(bindir), /trck)
