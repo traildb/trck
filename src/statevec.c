@@ -14,15 +14,30 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 /*
- * State vector is compressed using simple RLE scheme. RLE counter is 16 bits,
- * followed by a state_t structure.
+ * State vector is compressed using a simple RLE scheme.
  *
- * Couple extra shortcuts:
+ * Each item is prefixed by a counter_t that contains the
+ * number of RLE repetitions and a flag indicating whether
+ * the state is empty. If the state isn't empty, the counter
+ * is followed by the state itself. The sequence is terminated
+ * by a zero counter_t.
+ *
+ * In addition to this, there are a couple shortcuts:
  *
  * 1. All empty states at the end of the vector are just truncated.
  *
  * 2. If a vector contains only empty states, we record that as
  * (statevec_t *)NULL, and no memory is allocated.
+ *
+ * Example: a sequence of states
+ *
+ *      A 0 0 0 B B C 0 0 0
+ *
+ * Is encoded as
+ *
+ *     {nonempty, 1} A {empty, 3} {nonempty, 2} B {nonempty, 1} C {0}
+ *
+ *
  */
 
 sv_counter_t make_counter(int n, bool is_empty_state)

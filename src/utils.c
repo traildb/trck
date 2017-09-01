@@ -69,7 +69,11 @@ void string_tuple_init(string_tuple_t *tuple)
  * 0xff  -> 0xff 0xff
  */
 void string_tuple_append(char *val, int length, int type, string_tuple_t *tuple) {
-    if (tuple->len == sizeof(tuple->buf)-1)
+    /*
+     * Make sure there is space for zero terminator, comma,
+     * type and one byte of the new value.
+     */
+    if (tuple->len == sizeof(tuple->buf)-5)
         return;
 
     if (tuple->len) {

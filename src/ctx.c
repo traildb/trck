@@ -33,6 +33,7 @@ void ctx_init(ctx_t *ctx, db_t *db) {
 
 void ctx_free(ctx_t *ctx) {
     free(ctx->buf);
+    tdb_cursor_free(ctx->cursor);
 }
 
 void ctx_read_trail(ctx_t *ctx, uint64_t trail_id, uint64_t window_start, uint64_t window_end) {
