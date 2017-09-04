@@ -70,6 +70,7 @@ int j128m_del(struct judy_128_map *j128m, __uint128_t key)
     if (hi_ptr){
         lo_map = (Pvoid_t)*hi_ptr;
         JLD(rc, lo_map, lo_key);
+        *(Pvoid_t *)hi_ptr = lo_map;
         int num_left;
         JLC(num_left, lo_map, 0, -1);
         if (num_left == 0)
