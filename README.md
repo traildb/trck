@@ -57,7 +57,7 @@ Matching trail patterns reliably can be very tricky because of a large number of
 ### Requirements:
 
 * Ubuntu / Debian Linux / OSX
-* Debian packages `bash python (>=2.7) make python-ply jq libjudy-dev (>=1.0.5-5) libjson-c-dev libcmph-dev libc6-dev libjemalloc-dev`
+* Debian packages `bash python (>=2.7) make python-ply jq libjudy-dev (>=1.0.5-5) libjson-c-dev libcmph-dev libc6-dev libjemalloc-dev libmsgpack-dev`
 * C compiler, tested with `gcc` and `clang`.
 
 On OSX, you'll need to install a few packages from `brew`:
@@ -82,7 +82,7 @@ Example:
 ./bin/trck -c myprogram.tr -o matcher-traildb
 ```
 
-That will compile your program to a binary `matcher-traildb` that will dynamically linked to `libtraildb`. That binary accepts TrailDB paths as positional arguments and prints results in JSON format to stdout. You can also compile a static binary by using `--static` flag (currently Linux only).
+That will compile your program to a binary `matcher-traildb` that will dynamically linked to `libtraildb`. This binary accepts TrailDB paths as positional arguments and prints results in JSON format to stdout. You can also compile to a static binary by using `--static` flag (currently Linux only).
 
 You can specify program parameter values using `--params file.json`, JSON file should contain a dictionary specifying values for every parameter. See [Parameters](#parameters) section for more details.
 
