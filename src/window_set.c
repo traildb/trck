@@ -42,6 +42,7 @@ window_set_t *parse_window_set(const char *path) {
         int nt = 0;
 
         __uint128_t cookie = 0;
+        __uint128_t id = 0;
 
         uint64_t window_start = 0;
         uint64_t window_end = 0;
@@ -52,28 +53,35 @@ window_set_t *parse_window_set(const char *path) {
             switch (nt) {
                 case 0:
                     CHECK(0 == tdb_uuid_raw((uint8_t *)token, (uint8_t *)&cookie),
-                          "invalid format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2)",
+                          "invalid format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2[,id])",
                           lineno, path);
                     break;
                 case 1:
                     window_start = strtol(token, &endptr, 10);
                     CHECK(*endptr == '\0',
-                          "invalid start timestamp format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2)",
+                          "invalid start timestamp format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2[,id])",
                           lineno, path);
                     break;
                 case 2:
                     window_end = strtol(token, &endptr, 10);
                     CHECK(*endptr == '\r' || *endptr == '\n' || *endptr == '\0',
-                          "invalid end timestamp format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2)",
+                          "invalid end timestamp format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2[,id])",
                           lineno, path);
                     break;
+                case 3:
+                    CHECK(0 == tdb_uuid_raw((uint8_t *)token, (uint8_t *)&id),
+                          "invalid format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2[,id])",
+                          lineno, path);
             }
             nt++;
         }
 
-        CHECK(nt == 3, "incorrect number of fields on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2)", lineno, path);
+        CHECK(nt == 3 || nt == 4, "incorrect number of fields on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2[,id])", lineno, path);
 
-        if (cookie) {
+        if (id) {
+            *j128m_insert(&tmp_res.start_ts, id) = window_start;
+            *j128m_insert(&tmp_res.end_ts, id) = window_end;
+        } else if (cookie) {
             *j128m_insert(&tmp_res.start_ts, cookie) = window_start;
             *j128m_insert(&tmp_res.end_ts, cookie) = window_end;
         }
