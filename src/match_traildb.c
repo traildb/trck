@@ -380,7 +380,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
 
     if (window_set)
         // This is a list of cookies, unless there's a 4th id column, in which case it's a list of ids.
-        window_ids = window_set_get_cookies(window_set, &num_windows);
+        window_ids = window_set_get_ids(window_set, &num_windows);
 
     /*
      * For each OpenMP thread, we keep a separate results

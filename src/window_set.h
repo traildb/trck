@@ -13,7 +13,7 @@ void free_window_set(window_set_t *s);
 int window_set_get(window_set_t *set, const uint8_t *cookie, uint64_t *start_ts, uint64_t *end_ts);
 
 /* get all cookies as a flat array */
-__uint128_t *window_set_get_cookies(window_set_t *set, uint64_t *num_cookies);
+__uint128_t *window_set_get_ids(window_set_t *set, uint64_t *num_ids);
 
 void window_set_id_to_cookie(window_set_t *set, const uint8_t *id, __uint128_t *out_cookie);
 

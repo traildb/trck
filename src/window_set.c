@@ -146,10 +146,10 @@ void dump_window_set(window_set_t *res) {
     }
 }
 
-__uint128_t *window_set_get_cookies(window_set_t *set, uint64_t *num_cookies) {
-    *num_cookies = j128m_num_keys(&set->start_ts);
+__uint128_t *window_set_get_ids(window_set_t *set, uint64_t *num_ids) {
+    *num_ids = j128m_num_keys(&set->start_ts);
 
-    __uint128_t *res = malloc(sizeof(__uint128_t) * (*num_cookies));
+    __uint128_t *res = malloc(sizeof(__uint128_t) * (*num_ids));
 
     __uint128_t idx = 0;
     uint64_t i = 0;
