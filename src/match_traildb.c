@@ -379,6 +379,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
     uint64_t num_windows = 0;
 
     if (window_set)
+        // This is a list of cookies, unless there's a 4th id column, in which case it's a list of ids.
         window_ids = window_set_get_cookies(window_set, &num_windows);
 
     /*
@@ -506,7 +507,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
         #pragma omp for schedule(static)
         for (uint64_t i = 0; i < num_trails; i++) {
             const uint8_t *cookie;
-            __uint128_t out_cookie = 0;
+            __uint128_t id = 0;
 
             uint64_t trail_id = 0;
 
@@ -515,8 +516,11 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
 
             if (window_set) {
                 // Convert the id -> cookie (simply returns the cookie if the last id column is not present).
+                __uint128_t out_cookie = 0;
+
                 window_set_id_to_cookie(window_set, (uint8_t *)&window_ids[i], &out_cookie);
                 cookie = &out_cookie;
+                id = window_ids[i];
 
                 if (tdb_get_trail_id(db.db, cookie, &trail_id) != 0)
                     continue; /* cookie not found in the traildb */
@@ -527,10 +531,11 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
             } else {
                 trail_id = i;
                 cookie = tdb_get_uuid(db.db, trail_id);
+                id = *(__uint128_t *)cookie;
             }
 
             window_start = (window_start < min_ts) ? min_ts : window_start;
-            ctx_read_trail(&ctx, trail_id, window_start, window_end);
+            ctx_read_trail(&ctx, trail_id, id, window_start, window_end);
 
             /*
              * Get state vector for this cookie from global input

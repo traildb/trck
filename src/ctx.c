@@ -36,11 +36,14 @@ void ctx_free(ctx_t *ctx) {
     tdb_cursor_free(ctx->cursor);
 }
 
-void ctx_read_trail(ctx_t *ctx, uint64_t trail_id, uint64_t window_start, uint64_t window_end) {
+// if id is present, then cookie is set to id
+// otherwise, cookie is set to the actual cookie
+// therefore, in neither case do we do a trail_id -> uuid -> cookie lookup
+void ctx_read_trail(ctx_t *ctx, uint64_t trail_id, __uint128_t cookie, uint64_t window_start, uint64_t window_end) {
     ctx->ts_window_end = window_end;
     ctx->ts_window_start = window_start;
     ctx->trail_id = trail_id;
-    ctx->cookie = tdb_get_uuid(ctx->db->db, trail_id);
+    ctx->cookie = cookie;
 
     tdb_error res = tdb_get_trail(ctx->cursor, trail_id);
     CHECK(res == 0, "could not get trail %" PRIu64, trail_id);
@@ -147,7 +150,7 @@ uint64_t ctx_get_cookie_timestamp_filter_start(ctx_t *ctx)
 
 void ctx_get_cookie(ctx_t *ctx, char buf[static 16])
 {
-    memcpy((uint8_t *)buf, ctx->cookie, 16);
+    memcpy((uint8_t *)buf, &ctx->cookie, 16);
 }
 
 const char *ctx_get_item_value(ctx_t *ctx, item_t item, int keyid, int *len)

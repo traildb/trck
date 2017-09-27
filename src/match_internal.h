@@ -28,7 +28,7 @@ struct ctx_t {
     int64_t position;
     int stats; /* used for jit-like optimizations */
     perf_stats_t perf_stats;
-    const uint8_t *cookie;
+    __uint128_t cookie;
     db_t *db;
 
     uint64_t ts_window_start;
