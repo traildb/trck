@@ -15,4 +15,6 @@ int window_set_get(window_set_t *set, const uint8_t *cookie, uint64_t *start_ts,
 /* get all cookies as a flat array */
 __uint128_t *window_set_get_cookies(window_set_t *set, uint64_t *num_cookies);
 
+void window_set_id_to_cookie(window_set_t *set, const uint8_t *id, __uint128_t *out_cookie);
+
 void dump_window_set(window_set_t *res);

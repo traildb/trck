@@ -375,11 +375,11 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
     j128m_init(states);
 
 
-    __uint128_t *window_cookies = 0;
+    __uint128_t *window_ids = 0;
     uint64_t num_windows = 0;
 
     if (window_set)
-        window_cookies = window_set_get_cookies(window_set, &num_windows);
+        window_ids = window_set_get_cookies(window_set, &num_windows);
 
     /*
      * For each OpenMP thread, we keep a separate results
@@ -506,6 +506,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
         #pragma omp for schedule(static)
         for (uint64_t i = 0; i < num_trails; i++) {
             const uint8_t *cookie;
+            __uint128_t out_cookie = 0;
 
             uint64_t trail_id = 0;
 
@@ -513,13 +514,16 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
             uint64_t window_end = 0;
 
             if (window_set) {
-                if (tdb_get_trail_id(db.db, (uint8_t *)&window_cookies[i], &trail_id) != 0)
-                    continue; /* cookie not found in the traildb */
-                else {
-                    cookie = (uint8_t *)&window_cookies[i];
-                }
+                // Convert the id -> cookie (simply returns the cookie if the last id column is not present).
+                window_set_id_to_cookie(window_set, (uint8_t *)&window_ids[i], &out_cookie);
+                cookie = &out_cookie;
 
-                window_set_get(window_set, cookie, &window_start, &window_end);
+                if (tdb_get_trail_id(db.db, cookie, &trail_id) != 0)
+                    continue; /* cookie not found in the traildb */
+
+                // We need to use the original id type (be it an id or cookie) to look up the start/end times, because
+                // that id type is what's stored in the maps.
+                window_set_get(window_set, (uint8_t *)&window_ids[i], &window_start, &window_end);
             } else {
                 trail_id = i;
                 cookie = tdb_get_uuid(db.db, trail_id);
@@ -913,7 +917,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
     }
     j128m_free(states);
 
-    free(window_cookies);
+    free(window_ids);
 
     tend = time(NULL);
     fprintf(stderr, "finalizing states took %ld\n", tend-tstart);
