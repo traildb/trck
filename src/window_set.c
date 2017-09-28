@@ -174,8 +174,9 @@ void window_set_id_to_cookie(window_set_t *set, const uint8_t *id, __uint128_t *
         return;
     }
 
-    ((Word_t *)out_cookie)[1] = *result_hi;
-    ((Word_t *)out_cookie)[0] = *result_lo;
+    *out_cookie = *result_hi;
+    *out_cookie <<= 64;
+    *out_cookie |= *result_lo;
 }
 
 int test_main(int argc, char **argv) {
