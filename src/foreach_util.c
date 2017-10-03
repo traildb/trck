@@ -54,9 +54,9 @@ id_value_t *groupby_ids_create(const groupby_info_t *gi, db_t *db)
     tdb_field field_ids[gi->num_vars];
     tdb_field field;
     for (int j = 0; j < gi->num_vars; j++) {
-        tdb_error e = tdb_get_field(db->db, gi->var_fields[j], &field_ids[j]);
-        if (e)
-            field_ids[j] = -1;
+        field_ids[j] = -1;
+        if (gi->var_fields[j])
+            tdb_get_field(db->db, gi->var_fields[j], &field_ids[j]); /* this may fail, that's ok */
     }
 
     id_value_t *out = res;
@@ -64,8 +64,11 @@ id_value_t *groupby_ids_create(const groupby_info_t *gi, db_t *db)
         for (int j = 0; j < gi->num_vars; j++) {
             int field_id = field_ids[j];
 
-            if (field_id == -1)
+            if (field_id == -1) {
+                out->id = -1;
+                out++;
                 continue;
+            }
 
             string_val_t tuple = gi->tuples[i * gi->num_vars + j];
 
@@ -126,9 +129,10 @@ void vti_index_create(vti_index_t *idx, const groupby_info_t *gi,
     tdb_field field_ids[gi->num_vars];
 
     for (int j = 0; j < gi->num_vars; j++) {
-        tdb_error e = tdb_get_field(db, gi->var_fields[j], &field_ids[j]);
-        if (e)
-            field_ids[j] = -1;
+        field_ids[j] = -1;
+
+        if (gi->var_fields[j])
+            tdb_get_field(db, gi->var_fields[j], &field_ids[j]); /* this may fail, if field has no "type" */
     }
 
     /*
