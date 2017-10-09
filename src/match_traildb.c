@@ -390,11 +390,12 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
     j128m_init(states);
 
 
-    __uint128_t *window_cookies = 0;
+    __uint128_t *window_ids = 0;
     uint64_t num_windows = 0;
 
     if (window_set)
-        window_cookies = window_set_get_cookies(window_set, &num_windows);
+        // This is a list of cookies, unless there's a 4th id column, in which case it's a list of ids.
+        window_ids = window_set_get_ids(window_set, &num_windows);
 
     /*
      * For each OpenMP thread, we keep a separate results
@@ -523,6 +524,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
         #pragma omp for schedule(static)
         for (uint64_t i = 0; i < num_trails; i++) {
             const uint8_t *cookie;
+            __uint128_t id = 0;
 
             uint64_t trail_id = 0;
 
@@ -530,20 +532,27 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
             uint64_t window_end = 0;
 
             if (window_set) {
-                if (tdb_get_trail_id(db.db, (uint8_t *)&window_cookies[i], &trail_id) != 0)
-                    continue; /* cookie not found in the traildb */
-                else {
-                    cookie = (uint8_t *)&window_cookies[i];
-                }
+                // Convert the id -> cookie (simply returns the cookie if the last id column is not present).
+                __uint128_t out_cookie = 0;
 
-                window_set_get(window_set, cookie, &window_start, &window_end);
+                window_set_id_to_cookie(window_set, (uint8_t *)&window_ids[i], &out_cookie);
+                cookie = &out_cookie;
+                id = window_ids[i];
+
+                if (tdb_get_trail_id(db.db, cookie, &trail_id) != 0)
+                    continue; /* cookie not found in the traildb */
+
+                // We need to use the original id type (be it an id or cookie) to look up the start/end times, because
+                // that id type is what's stored in the maps.
+                window_set_get(window_set, (uint8_t *)&window_ids[i], &window_start, &window_end);
             } else {
                 trail_id = i;
                 cookie = tdb_get_uuid(db.db, trail_id);
+                id = *(__uint128_t *)cookie;
             }
 
             window_start = (window_start < min_ts) ? min_ts : window_start;
-            ctx_read_trail(&ctx, trail_id, window_start, window_end);
+            ctx_read_trail(&ctx, trail_id, id, window_start, window_end);
 
             /*
              * Get state vector for this cookie from global input
@@ -930,7 +939,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
     }
     j128m_free(states);
 
-    free(window_cookies);
+    free(window_ids);
 
     tend = time(NULL);
     fprintf(stderr, "finalizing states took %ld\n", tend-tstart);

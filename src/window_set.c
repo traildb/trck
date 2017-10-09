@@ -12,12 +12,16 @@
 typedef struct window_set_t {
     struct judy_128_map start_ts;
     struct judy_128_map end_ts;
+    struct judy_128_map id_to_cookie_map_hi;
+    struct judy_128_map id_to_cookie_map_lo;
 } window_set_t;
 
 void free_window_set(window_set_t *s) {
     if (s) {
         j128m_free(&s->start_ts);
         j128m_free(&s->end_ts);
+        j128m_free(&s->id_to_cookie_map_hi);
+        j128m_free(&s->id_to_cookie_map_lo);
     }
     free(s);
 }
@@ -33,6 +37,8 @@ window_set_t *parse_window_set(const char *path) {
 
     j128m_init(&tmp_res.start_ts);
     j128m_init(&tmp_res.end_ts);
+    j128m_init(&tmp_res.id_to_cookie_map_hi);
+    j128m_init(&tmp_res.id_to_cookie_map_lo);
 
     uint64_t lineno = 1;
     while (fgets(buf, sizeof(buf), f)) {
@@ -42,6 +48,7 @@ window_set_t *parse_window_set(const char *path) {
         int nt = 0;
 
         __uint128_t cookie = 0;
+        __uint128_t id = 0;
 
         uint64_t window_start = 0;
         uint64_t window_end = 0;
@@ -52,28 +59,37 @@ window_set_t *parse_window_set(const char *path) {
             switch (nt) {
                 case 0:
                     CHECK(0 == tdb_uuid_raw((uint8_t *)token, (uint8_t *)&cookie),
-                          "invalid format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2)",
+                          "invalid format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2[,id])",
                           lineno, path);
                     break;
                 case 1:
                     window_start = strtol(token, &endptr, 10);
                     CHECK(*endptr == '\0',
-                          "invalid start timestamp format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2)",
+                          "invalid start timestamp format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2[,id])",
                           lineno, path);
                     break;
                 case 2:
                     window_end = strtol(token, &endptr, 10);
                     CHECK(*endptr == '\r' || *endptr == '\n' || *endptr == '\0',
-                          "invalid end timestamp format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2)",
+                          "invalid end timestamp format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2[,id])",
                           lineno, path);
                     break;
+                case 3:
+                    CHECK(0 == tdb_uuid_raw((uint8_t *)token, (uint8_t *)&id),
+                          "invalid format on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2[,id])",
+                          lineno, path);
             }
             nt++;
         }
 
-        CHECK(nt == 3, "incorrect number of fields on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2)", lineno, path);
+        CHECK(nt == 3 || nt == 4, "incorrect number of fields on line %" PRIu64 " in window file %s (should be cookie,timestamp1,timestamp2[,id])", lineno, path);
 
-        if (cookie) {
+        if (id) {
+            *j128m_insert(&tmp_res.id_to_cookie_map_hi, id) = (uint64_t)((cookie >> 64) & UINT64_MAX);
+            *j128m_insert(&tmp_res.id_to_cookie_map_lo, id) = (uint64_t)(cookie & UINT64_MAX);
+            *j128m_insert(&tmp_res.start_ts, id) = window_start;
+            *j128m_insert(&tmp_res.end_ts, id) = window_end;
+        } else if (cookie) {
             *j128m_insert(&tmp_res.start_ts, cookie) = window_start;
             *j128m_insert(&tmp_res.end_ts, cookie) = window_end;
         }
@@ -130,10 +146,10 @@ void dump_window_set(window_set_t *res) {
     }
 }
 
-__uint128_t *window_set_get_cookies(window_set_t *set, uint64_t *num_cookies) {
-    *num_cookies = j128m_num_keys(&set->start_ts);
+__uint128_t *window_set_get_ids(window_set_t *set, uint64_t *num_ids) {
+    *num_ids = j128m_num_keys(&set->start_ts);
 
-    __uint128_t *res = malloc(sizeof(__uint128_t) * (*num_cookies));
+    __uint128_t *res = malloc(sizeof(__uint128_t) * (*num_ids));
 
     __uint128_t idx = 0;
     uint64_t i = 0;
@@ -148,6 +164,19 @@ __uint128_t *window_set_get_cookies(window_set_t *set, uint64_t *num_cookies) {
     }
 
     return res;
+}
+
+void window_set_id_to_cookie(window_set_t *set, const uint8_t *id, __uint128_t *out_cookie) {
+    Word_t *result_hi = j128m_get(&set->id_to_cookie_map_hi, *(__uint128_t *)id);
+    Word_t *result_lo = j128m_get(&set->id_to_cookie_map_lo, *(__uint128_t *)id);
+    if (!result_hi && !result_lo) {
+        *out_cookie = *(__uint128_t *)id;
+        return;
+    }
+
+    *out_cookie = *result_hi;
+    *out_cookie <<= 64;
+    *out_cookie |= *result_lo;
 }
 
 int test_main(int argc, char **argv) {

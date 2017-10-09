@@ -3,4 +3,6 @@ src/parser.out
 src/parsetab.py
 lib/*.o
 lib/*.a
-bin/gettrail
+bin/gettrail*
+test/parser.out
+test/parsetab.py
