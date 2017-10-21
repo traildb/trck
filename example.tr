@@ -1,0 +1,22 @@
+foreach %a, %b in @params
+    start ->
+        receive
+            type=%b, a=%a -> wait
+            a=%a -> quit
+            type in #w -> repeat
+            * -> quit
+
+    wait ->
+        receive
+            type='t1', a=%a -> yield a to #x, candidate
+            * -> repeat
+
+    candidate ->
+        receive
+            type='t2', a=%a, timestamp >= %ts -> yield $y, yield cookie, timestamp, a to #z, skip_dup
+            * -> repeat
+
+    skip_dup ->
+        receive
+           * -> repeat
+        after 10m -> candidate
