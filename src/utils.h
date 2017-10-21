@@ -89,3 +89,8 @@ hyperloglog_t *hll_insert(hyperloglog_t *hll, string_tuple_t *tuple);
  * Fail with error.
  */
 void error(char *err);
+
+/*
+ * Given a tuple, serialize a JSON string into result
+ */
+void string_tuple_to_json(char *tuple, char *result);
