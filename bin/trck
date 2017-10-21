@@ -187,6 +187,7 @@ def main():
                     fsm2c.gen_header(flat_rules["rules"],
                                      groupby=flat_rules.get('groupby'),
                                      out=sys.stdout)
+                    return
                 else:
                     with open(os.path.join(gen_path, 'out_traildb.c'), 'w') as c_src:
                         fsm2c.compile(flat_rules["rules"],
