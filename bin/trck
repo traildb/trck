@@ -13,7 +13,7 @@ import trparser
 import fsm2c
 
 def print_(s, level='info'):
-    sys.stdout.write("%s\n" % s)
+    sys.stderr.write("%s\n" % s)
 
 def make_absolute(x):
     return os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), x))
