@@ -2,7 +2,7 @@ import traildb
 from uuid import uuid4
 
 def main():
-	tdb_cons = traildb.TrailDBConstructor("test", ["type", "a"])
+	tdb_cons = traildb.TrailDBConstructor("testexample", ["type", "a"])
 	c1 = uuid4().hex
 	c2 = uuid4().hex
 	c3 = uuid4().hex

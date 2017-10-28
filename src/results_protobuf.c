@@ -27,7 +27,7 @@ Generate Result.pb-c.c
 protoc --c_out=. Result.proto
 
 # Generate trck executable (Optional)
-bin/trck -c example.tr -o example
+bin/trck -c example.tr -o normal-example
 
 # Generate source and header files for example
 mkdir gen
@@ -41,7 +41,8 @@ gcc \
 	Result.pb-c.c \
 	src/statevec.c \
 	src/match_traildb.c \
-	-o trck-example \
+	-o protobuf-example \
+	-I. \
 	-Igen \
 	-Isrc \
 	-Ideps/traildb/src \
@@ -55,14 +56,14 @@ gcc \
 	-lmsgpackc \
 	-ljson-c \
 	-lm \
-	/home/alex/Programs/trck-protobuf/deps/trck/lib/libtrck.a
+	/Users/alexholyoke/projects/trck/lib/libtrck.a
 
 # Generate example tdb
 python generate.py
-tdb dump -i test
+tdb dump -i testexample
 
 
-./example test.tdb --params=params.json
+./protobuf-example testexample.tdb --params=params.json --output-format json
 
 
 Rebuild trck
