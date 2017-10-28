@@ -7,3 +7,6 @@
 [submodule "deps/traildb-python"]
 	path = deps/traildb-python
 	url = https://github.com/traildb/traildb-python.git
+[submodule "deps/protobuf-c"]
+	path = deps/protobuf-c
+	url = git@github.com:protobuf-c/protobuf-c.git
