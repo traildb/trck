@@ -93,4 +93,4 @@ void error(char *err);
 /*
  * Given a tuple, serialize a JSON string into result
  */
-void string_tuple_to_json(char *tuple, char *result);
+int string_tuple_to_json(char *tuple, char *result);

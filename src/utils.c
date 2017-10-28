@@ -313,7 +313,7 @@ void hexcpy(char *dst, uint8_t *src, int len) {
     }
 }
 
-void string_tuple_to_json(char *tuple, char *result)
+int string_tuple_to_json(char *tuple, char *result)
 {
     char *tail = tuple;
     char res[2048];
@@ -343,4 +343,6 @@ void string_tuple_to_json(char *tuple, char *result)
     }
 
     *r = 0;
+
+    return r - result;
 }
