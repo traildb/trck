@@ -11,6 +11,8 @@ import shutil
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '../src'))
 import trparser
 import fsm2c
+import proto_helpers
+
 
 def print_(s, level='info'):
     sys.stderr.write("%s\n" % s)
@@ -127,6 +129,14 @@ def check_openmp_osx():
     except OSError:
         return False
 
+
+def copy_proto_files(gen_path, proto):
+    header_file = proto_helpers.pb_header(proto, basename=True)
+    src_file = proto_helpers.pb_src(proto, basename=True)
+    shutil.copyfile(header_file, os.path.join(gen_path, header_file))
+    shutil.copyfile(src_file, os.path.join(gen_path, src_file))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("program_name", help="program")
@@ -137,6 +147,7 @@ def main():
     parser.add_argument("--output-file", "-o", help="output path for compiled binary", default='matcher-traildb')
     parser.add_argument("--params-file", "-p", help="path to parameter file")
     parser.add_argument('--library', '-l', action='append', help="additional library to link to", default=[])
+    parser.add_argument("--proto", help="Path to proto file for results")
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--dynamic", action="store_true", help="link dependencies dynamically (default)")
@@ -196,6 +207,19 @@ def main():
                                                 'out_traildb.h'],
                                       groupby=flat_rules.get('groupby'),
                                       out=c_src)
+                    if args.proto:
+                        with open(os.path.join(gen_path, 'results_protobuf.c'), 'w') as proto_src:
+                            fsm2c.compile_proto(
+                                flat_rules["rules"],
+                                includes=[
+                                    'results_protobuf.h',
+                                    proto_helpers.pb_header(args.proto, basename=True),
+                                ],
+                                groupby=flat_rules.get('groupby'),
+                                proto_name=proto_helpers.proto_name(args.proto),
+                                out=proto_src)
+
+                        copy_proto_files(gen_path, args.proto)
 
                 src_path = make_absolute('../src')
 
@@ -208,8 +232,13 @@ def main():
                 sources = [
                         j(src_path, "match_traildb.c"),
                         j(src_path, "statevec.c"),
-                        j(gen_path, "out_traildb.c")
+                        j(gen_path, "out_traildb.c"),
                 ]
+                if args.proto:
+                    sources += [
+                        j(gen_path, "results_protobuf.c"),
+                        j(gen_path, proto_helpers.pb_src(args.proto, basename=True))
+                    ]
 
                 if args.static:
                     compile_method = compile_static
