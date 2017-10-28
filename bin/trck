@@ -24,7 +24,8 @@ LIBS = ["-ltraildb", make_absolute("../lib/libtrck.a"),
         "-lJudy",
         "-ljemalloc",
         "-lmsgpackc",
-        "-ljson-c"]
+        "-ljson-c",
+        "-lprotobuf-c"]
 
 FLAGS = ["-std=c99",
         "-g",
