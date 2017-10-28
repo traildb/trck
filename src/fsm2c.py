@@ -938,6 +938,9 @@ def compile_proto(rules, includes, groupby, proto_name, out=sys.stdout):
     preprocess(program)
     gen_prologue_proto(g, program, includes=includes)
     gen_proto_add_int(g, program, proto_name)
+    gen_proto_add_set(g, program, proto_name)
+    gen_proto_add_multiset(g, program, proto_name)
+    gen_proto_add_hll(g, program, proto_name)
     gen_output_groupby_result_proto(g, program, proto_name)
     gen_output_proto(g, program, proto_name)
 
@@ -1012,8 +1015,23 @@ def gen_proto_add_int(g, program, proto_name):
         g.o("{struct} *msg = ({struct} *) p;".format(struct=ph.result_struct(proto_name)))
         for yield_counter in program.yield_counters:
             counter = ph.proto_counter(yield_counter)
-            with BRACES(g, "if (!strcmp(name, \"{}\"))".format(counter)):
+            with BRACES(g, "if (!strcmp(name, \"{}\"))".format(yield_counter)):
                 g.o("msg->{} = value;".format(counter))
+
+
+def gen_proto_add_set(g, program, proto_name):
+    with BRACES(g, "void proto_add_set(void *p, char *name, set_t *value)"):
+        pass
+
+
+def gen_proto_add_multiset(g, program, proto_name):
+    with BRACES(g, "void proto_add_multiset(void *p, char *name, set_t *value)"):
+        pass
+
+
+def gen_proto_add_hll(g, program, proto_name):
+    with BRACES(g, "void proto_add_hll(void *p, char *name, hyperloglog_t *value)"):
+        pass
 
 
 def gen_output_groupby_result_proto(g, program, proto_name):
@@ -1034,11 +1052,13 @@ def gen_output_groupby_result_proto(g, program, proto_name):
                 param_name=param_name,
                 index=i))
 
-        # g.o("match_save_result(results, &msg, " \
-        #     "proto_add_int, " \
-        #     "proto_add_set, " \
-        #     "proto_add_multiset, " \
-        #     "proto_add_hll);")
+        g.o("match_save_result(" \
+            "results, " \
+            "&msg, " \
+            "proto_add_int, " \
+            "proto_add_set, " \
+            "proto_add_multiset, " \
+            "proto_add_hll);")
 
         g.o("len = {}(&msg);".format(ph.result_get_packed_size(proto_name)))
         g.o("buf = malloc(len);")
