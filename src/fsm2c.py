@@ -3,6 +3,9 @@ import sys
 import json
 import hashlib
 
+import proto_helpers as ph
+
+
 EXPIRES_NEVER = 'UINT64_MAX'
 
 
@@ -562,7 +565,6 @@ def preprocess(program):
     program.entrypoint_id = entrypoint_id
 
 
-
 def is_no_rewind(program):
     # figure out if this state machine ever requires jumping back in the trail
     # makes things a lot easier if it is not
@@ -637,7 +639,7 @@ def compile_block(g, ri, r, program):
         g.o("if (ctx_end_of_trail(ctx)) goto STOP;")
 
 
-def gen_prolog(g, program, includes):
+def gen_prologue(g, program, includes):
     g.o("""
         #include <stdint.h>
         #include <stdbool.h>
@@ -757,6 +759,7 @@ def gen_is_zero_result(g, program):
             g.o("&& (r->hll_%s == NULL)" % (k,))
 
         g.o(";")
+
 
 def gen_structs(g, program):
     g.o("#pragma pack (push, 1)")
@@ -898,7 +901,7 @@ def compile(rules, includes, groupby, out=sys.stdout):
     g = Gen(out)
     program = Program(rules, groupby=groupby)
     preprocess(program)
-    gen_prolog(g, program, includes=includes)
+    gen_prologue(g, program, includes=includes)
     gen_db_init(g, program)
     gen_trail_init(g, program)
     gen_is_initial_state(g, program)
@@ -927,6 +930,16 @@ def compile(rules, includes, groupby, out=sys.stdout):
         g.o("STOP:")
         g.o('DBG_PRINTF("================== STOP =================\\n");')
         g.o("return abort;")
+
+
+def compile_proto(rules, includes, groupby, proto_name, out=sys.stdout):
+    g = Gen(out)
+    program = Program(rules, groupby=groupby)
+    preprocess(program)
+    gen_prologue_proto(g, program, includes=includes)
+    gen_proto_add_int(g, program, proto_name)
+    gen_output_groupby_result_proto(g, program, proto_name)
+    gen_output_proto(g, program, proto_name)
 
 
 def gen_external_function_declarations(g, program):
@@ -965,6 +978,78 @@ def gen_header(rules, groupby, out=sys.stdout):
     gen_free_results(g, program)
     gen_is_zero_result(g, program)
     g.o("#endif")
+
+
+def gen_prologue_proto(g, program, includes):
+    g.o("""
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <Judy.h>
+#include <traildb.h>
+#include "fns_generated.h"
+#include "foreach_util.h"
+#include "utils.h"
+#include "safeio.h"
+#include "results_protobuf.h"
+""")
+
+    for i in includes:
+        g.o("#include \"{}\"".format(i))
+
+    g.o("#if DEBUG")
+    g.o("#define DBG_PRINTF(msg, ...) fprintf(stderr, msg, ##__VA_ARGS__);")
+    g.o("#else")
+    g.o("#define DBG_PRINTF(msg, ...)")
+    g.o("#endif")
+    g.o("#define MAXLINELEN 1000000")
+
+
+def gen_proto_add_int(g, program, proto_name):
+    with BRACES(g, "void proto_add_int(void *p, char *name, int64_t value)"):
+        g.o("{struct} *msg = ({struct} *) p;".format(struct=ph.result_struct(proto_name)))
+        for yield_counter in program.yield_counters:
+            counter = ph.proto_counter(yield_counter)
+            with BRACES(g, "if (!strcmp(name, \"{}\"))".format(counter)):
+                g.o("msg->{} = value;".format(counter))
+
+
+def gen_output_groupby_result_proto(g, program, proto_name):
+    with BRACES(g, "void output_groupby_result_proto(groupby_info_t *gi, int i, results_t *results)"):
+        g.o("string_val_t *tuple = &gi->tuples[i * gi->num_vars];")
+        g.o("{struct} msg = {struct_init};".format(
+            struct=ph.result_struct(proto_name),
+            struct_init=ph.result_struct_init(proto_name)))
+        g.o("unsigned len;")
+        g.o("void *buf;")
+
+        for i, param in enumerate(program.groupby['vars']):
+            param_name = ph.proto_var(param)
+            g.o("msg.{param_name} = malloc(sizeof(char) * tuple[{index}].len);".format(
+                param_name=param_name,
+                index=i))
+            g.o("strncpy(msg.{param_name}, tuple[{index}].str, tuple[{index}].len);".format(
+                param_name=param_name,
+                index=i))
+
+        # g.o("match_save_result(results, &msg, " \
+        #     "proto_add_int, " \
+        #     "proto_add_set, " \
+        #     "proto_add_multiset, " \
+        #     "proto_add_hll);")
+
+        g.o("len = {}(&msg);".format(ph.result_get_packed_size(proto_name)))
+        g.o("buf = malloc(len);")
+        g.o("{}(&msg, buf);".format(ph.result_pack(proto_name)))
+        g.o("fwrite(buf, len, 1, stdout);");
+        g.o("free(buf);")
+
+
+def gen_output_proto(g, program, proto_name):
+    with BRACES(g, "void output_proto(groupby_info_t *gi, results_t *results)"):
+        g.o("output_groupby_result_proto(gi, 0, results);")
 
 
 if __name__ == '__main__':
