@@ -32,6 +32,7 @@
 #include "distinct.h"
 #include "results_json.h"
 #include "results_msgpack.h"
+#include "results_protobuf.h"
 #include "utils.h"
 #include "window_set.h"
 #include "ctx.h"
@@ -1083,7 +1084,8 @@ void free_groupby_info(groupby_info_t *gi)
 
 typedef enum output_format_t {
     FORMAT_JSON,
-    FORMAT_MSGPACK
+    FORMAT_MSGPACK,
+    FORMAT_PROTO
 } output_format_t;
 
 
@@ -1123,6 +1125,10 @@ int run_query(char **traildb_paths, int num_paths,
             break;
         case FORMAT_MSGPACK:
             output_msgpack(&gi, results);
+            break;
+        case FORMAT_PROTO:
+            // TODO: Raise error if proto-file was not provided during compilation
+            output_proto(&gi, results);
             break;
         default:
             CHECK(0, "Unknown format");
@@ -1187,6 +1193,8 @@ output_format_t parse_format(char *format) {
         return FORMAT_MSGPACK;
     if (strcmp(format, "json") == 0)
         return FORMAT_JSON;
+    if (strcmp(format, "proto") == 0)
+        return FORMAT_PROTO;
 
     CHECK(0, "Incorrect format %s", format);
 }
