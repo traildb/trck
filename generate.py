@@ -16,6 +16,7 @@ def main():
 	tdb_cons.add(c1, 6, ["t2", "1"])
 
 	tdb_cons.add(c2, 1, ["t1", "1"])
+	tdb_cons.add(c2, 2, ["t1", "2"])
 	tdb_cons.add(c2, 5, ["t1", "0"])
 	tdb_cons.add(c2, 6, ["t2", "1"])
 	tdb_cons.add(c2, 7, ["t4", "1"])
