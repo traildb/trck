@@ -208,18 +208,19 @@ def main():
                                       groupby=flat_rules.get('groupby'),
                                       out=c_src)
                     if args.proto:
+                        proto_info = ('Trck', 'Results', 'rows', 'Result', './Results.proto')
                         with open(os.path.join(gen_path, 'results_protobuf.c'), 'w') as proto_src:
                             fsm2c.compile_proto(
                                 flat_rules["rules"],
                                 includes=[
                                     'results_protobuf.h',
-                                    proto_helpers.pb_header(args.proto, basename=True),
+                                    proto_helpers.pb_header(proto_info, basename=True),
                                 ],
                                 groupby=flat_rules.get('groupby'),
-                                proto_name=proto_helpers.proto_name(args.proto),
+                                proto_info=proto_info,
                                 out=proto_src)
 
-                        copy_proto_files(gen_path, args.proto)
+                        copy_proto_files(gen_path, proto_info)
 
                 src_path = make_absolute('../src')
 
@@ -237,7 +238,7 @@ def main():
                 if args.proto:
                     sources += [
                         j(gen_path, "results_protobuf.c"),
-                        j(gen_path, proto_helpers.pb_src(args.proto, basename=True))
+                        j(gen_path, proto_helpers.pb_src(proto_info, basename=True))
                     ]
 
                 if args.static:

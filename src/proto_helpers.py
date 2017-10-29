@@ -1,19 +1,47 @@
 import os
 
-def result_struct(proto_name):
-	return "Trck__{}".format(proto_name)
+def outer_struct(proto_info):
+	return "{}__{}".format(proto_info[0], proto_info[1])
 
 
-def result_struct_init(proto_name):
-	return "TRCK__{}__INIT".format(proto_name.upper())
+def outer_struct_init(proto_info):
+	return "{}__{}__INIT".format(proto_info[0].upper(), proto_info[1].upper())
 
 
-def result_get_packed_size(proto_name):
-	return "trck__{}__get_packed_size".format(proto_name.lower())
+def inner_struct(proto_info):
+	return "{}__{}__{}".format(
+		proto_info[0],
+		proto_info[1],
+		proto_info[3],
+	)
+
+def inner_struct_init(proto_info):
+	return "{}__{}__{}__INIT".format(
+		proto_info[0].upper(),
+		proto_info[1].upper(),
+		proto_info[3].upper(),
+	)
+
+def get_packed_size(proto_info):
+	return "{}__{}__get_packed_size".format(proto_info[0].lower(), proto_info[1].lower())
 
 
-def result_pack(proto_name):
-	return "trck__{}__pack".format(proto_name.lower())
+def pack(proto_info):
+	return "{}__{}__pack".format(proto_info[0].lower(), proto_info[1].lower())
+
+
+def pb_header(proto_info, basename=False):
+	pb_src_file = proto_info[4]
+	if basename:
+		pb_src_file = os.path.basename(pb_src_file)
+	return pb_src_file.replace(".proto", ".pb-c.h")
+
+
+def pb_src(proto_info, basename=False):
+	pb_src_file = proto_info[4]
+	if basename:
+		pb_src_file = os.path.basename(pb_src_file)
+	return pb_src_file.replace(".proto", ".pb-c.c")
 
 
 def proto_counter(yield_counter):
@@ -22,19 +50,3 @@ def proto_counter(yield_counter):
 
 def proto_var(var_name):
 	return var_name.replace("%", "param_")
-
-
-def pb_header(proto, basename=False):
-	if basename:
-		proto = os.path.basename(proto)
-	return proto.replace(".proto", ".pb-c.h")
-
-
-def pb_src(proto, basename=False):
-	if basename:
-		proto = os.path.basename(proto)
-	return proto.replace(".proto", ".pb-c.c")
-
-
-def proto_name(proto):
-	return proto.replace(".proto", "")

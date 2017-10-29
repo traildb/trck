@@ -932,17 +932,17 @@ def compile(rules, includes, groupby, out=sys.stdout):
         g.o("return abort;")
 
 
-def compile_proto(rules, includes, groupby, proto_name, out=sys.stdout):
+def compile_proto(rules, includes, groupby, proto_info, out=sys.stdout):
     g = Gen(out)
     program = Program(rules, groupby=groupby)
     preprocess(program)
-    gen_prologue_proto(g, program, includes=includes)
-    gen_proto_add_int(g, program, proto_name)
-    gen_proto_add_set(g, program, proto_name)
-    gen_proto_add_multiset(g, program, proto_name)
-    gen_proto_add_hll(g, program, proto_name)
-    gen_output_groupby_result_proto(g, program, proto_name)
-    gen_output_proto(g, program, proto_name)
+    gen_prologue_proto(g, program, proto_info, includes=includes)
+    gen_proto_add_int(g, program, proto_info)
+    gen_proto_add_set(g, program, proto_info)
+    gen_proto_add_multiset(g, program, proto_info)
+    gen_proto_add_hll(g, program, proto_info)
+    gen_output_groupby_result_proto(g, program, proto_info)
+    gen_output_proto(g, program, proto_info)
 
 
 def gen_external_function_declarations(g, program):
@@ -983,7 +983,7 @@ def gen_header(rules, groupby, out=sys.stdout):
     g.o("#endif")
 
 
-def gen_prologue_proto(g, program, includes):
+def gen_prologue_proto(g, program, proto_info, includes):
     g.o("""
 #include <stdint.h>
 #include <stdbool.h>
@@ -1009,67 +1009,84 @@ def gen_prologue_proto(g, program, includes):
     g.o("#endif")
     g.o("#define MAXLINELEN 1000000")
 
+    g.o("const static {struct} ROW_DEFAULT = {struct_init};".format(
+        struct=ph.inner_struct(proto_info),
+        struct_init=ph.inner_struct_init(proto_info),
+    ))
 
-def gen_proto_add_int(g, program, proto_name):
+
+def gen_proto_add_int(g, program, proto_info):
     with BRACES(g, "void proto_add_int(void *p, char *name, int64_t value)"):
-        g.o("{struct} *msg = ({struct} *) p;".format(struct=ph.result_struct(proto_name)))
+        g.o("{struct} *msg = ({struct} *) p;".format(struct=ph.inner_struct(proto_info)))
         for yield_counter in program.yield_counters:
             counter = ph.proto_counter(yield_counter)
             with BRACES(g, "if (!strcmp(name, \"{}\"))".format(yield_counter)):
                 g.o("msg->{} = value;".format(counter))
 
 
-def gen_proto_add_set(g, program, proto_name):
+def gen_proto_add_set(g, program, proto_info):
     with BRACES(g, "void proto_add_set(void *p, char *name, set_t *value)"):
         pass
 
 
-def gen_proto_add_multiset(g, program, proto_name):
+def gen_proto_add_multiset(g, program, proto_info):
     with BRACES(g, "void proto_add_multiset(void *p, char *name, set_t *value)"):
         pass
 
 
-def gen_proto_add_hll(g, program, proto_name):
+def gen_proto_add_hll(g, program, proto_info):
     with BRACES(g, "void proto_add_hll(void *p, char *name, hyperloglog_t *value)"):
         pass
 
 
-def gen_output_groupby_result_proto(g, program, proto_name):
-    with BRACES(g, "void output_groupby_result_proto(groupby_info_t *gi, int i, results_t *results)"):
+def gen_output_groupby_result_proto(g, program, proto_info):
+    with BRACES(g, "{struct} *output_groupby_result_proto(groupby_info_t *gi, int i, results_t *results)".format(
+        struct=ph.inner_struct(proto_info))):
         g.o("string_val_t *tuple = &gi->tuples[i * gi->num_vars];")
-        g.o("{struct} msg = {struct_init};".format(
-            struct=ph.result_struct(proto_name),
-            struct_init=ph.result_struct_init(proto_name)))
-        g.o("unsigned len;")
-        g.o("void *buf;")
+        g.o("results_t *pres = (results_t *)((uint8_t *)results + match_get_result_size() * i);")
+        g.o("{struct} *msg = malloc(sizeof({struct}));".format(struct=ph.inner_struct(proto_info)))
+        g.o("*msg = ROW_DEFAULT;")
 
         for i, param in enumerate(program.groupby['vars']):
             param_name = ph.proto_var(param)
-            g.o("msg.{param_name} = malloc(sizeof(char) * tuple[{index}].len);".format(
+            g.o("msg->{param_name} = malloc(sizeof(char) * (tuple[{index}].len + 1));".format(
                 param_name=param_name,
                 index=i))
-            g.o("strncpy(msg.{param_name}, tuple[{index}].str, tuple[{index}].len);".format(
+            g.o("strncpy(msg->{param_name}, tuple[{index}].str, (tuple[{index}].len + 1));".format(
+                param_name=param_name,
+                index=i))
+            g.o("msg->{param_name}[tuple[{index}].len] = '\\0';".format(
                 param_name=param_name,
                 index=i))
 
+
         g.o("match_save_result(" \
-            "results, " \
-            "&msg, " \
+            "pres, " \
+            "msg, " \
             "proto_add_int, " \
             "proto_add_set, " \
             "proto_add_multiset, " \
             "proto_add_hll);")
 
-        g.o("len = {}(&msg);".format(ph.result_get_packed_size(proto_name)))
-        g.o("buf = malloc(len);")
-        g.o("{}(&msg, buf);".format(ph.result_pack(proto_name)))
-        g.o("fwrite(buf, len, 1, stdout);");
-        g.o("free(buf);")
+        g.o("return msg;")
 
 
-def gen_output_proto(g, program, proto_name):
+def gen_output_proto(g, program, proto_info):
     with BRACES(g, "void output_proto(groupby_info_t *gi, results_t *results)"):
-        g.o("output_groupby_result_proto(gi, 0, results);")
+        g.o("{struct} msg = {struct_init};".format(
+            struct=ph.outer_struct(proto_info),
+            struct_init=ph.outer_struct_init(proto_info)))
+        g.o("msg.n_{} = gi->num_tuples;".format(proto_info[2]))
+        g.o("msg.{rows} = malloc(msg.n_{rows} * sizeof(void *));".format(
+            rows=proto_info[2]))
+        with BRACES(g, "for (int i = 0; i < msg.n_{}; i++)".format(proto_info[2])):
+            g.o("msg.{}[i] = output_groupby_result_proto(gi, i, results);".format(proto_info[2]))
+
+        g.o("unsigned len = {}(&msg);".format(ph.get_packed_size(proto_info)))
+        g.o("void *buf = malloc(len);")
+        g.o("{}(&msg, buf);".format(ph.pack(proto_info)))
+        g.o("fwrite(buf, len, 1, stdout);")
+        g.o("free(buf);")
 
 
 if __name__ == '__main__':
