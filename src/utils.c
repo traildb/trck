@@ -65,7 +65,7 @@ void string_tuple_init(string_tuple_t *tuple)
 /*
  * Tuple encoding is done as follows: most bytes are left as is, except
  * 0x00  -> 0xff 0xfe
- * ','   -> 0xff 0xfe
+ * ','   -> 0xff 0xfd
  * 0xff  -> 0xff 0xff
  */
 void string_tuple_append(char *val, int length, int type, string_tuple_t *tuple) {
