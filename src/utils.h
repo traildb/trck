@@ -18,6 +18,9 @@ typedef struct json_object json_object;
 #define TUPLE_ITEM_TYPE_STRING 'S'
 #define TUPLE_ITEM_TYPE_BYTES  'B'
 
+// Max Judy line length
+#define MAXLINELEN 1000000
+
 /*
  * Create a new tuple.
  */
@@ -89,3 +92,8 @@ hyperloglog_t *hll_insert(hyperloglog_t *hll, string_tuple_t *tuple);
  * Fail with error.
  */
 void error(char *err);
+
+/*
+ * Calculate the size of a set by iterating through all of the elements
+ */
+int JSL_size(set_t *value);

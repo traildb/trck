@@ -295,3 +295,17 @@ void str_to_hex_str(char *dst, char *src, size_t size)
 void error(char *err) {
     CHECK(false, "error while %s", err);
 }
+
+
+int JSL_size(set_t *value) {
+    uint8_t index[MAXLINELEN];
+    index[0] = '\0';
+    Word_t *pv;
+    JSLF(pv, *value, index);
+    int count = 0;
+    while(pv) {
+        count++;
+        JSLN(pv, *value, index);
+    }
+    return count;
+}
