@@ -465,6 +465,26 @@ class Program:
     def get_rule_window_duration(self, rule_id):
         return self.rules[rule_id].get("window")
 
+    def get_yield_names(self, set_name):
+        """
+        Get's the names of values yielded to set_name
+        Only call this for protobuf programs
+        """
+        sources = [
+            y['src']
+            for rule in self.rules
+            for clause in rule['clauses']
+            if 'yield' in clause
+            for y in clause['yield']
+            if y['dst'] == set_name
+        ]
+        names = {tuple(i['name'] for i in src) for src in sources}
+
+        if len(names) != 1:
+            raise Exception("Protobuf programs must yield the same types to a single set")
+
+        return names.pop()
+
 
 def add_yield_vars(program, yield_list):
     for y in yield_list:
@@ -1013,6 +1033,7 @@ def gen_prologue_proto(g, program, proto_info, includes):
         struct=ph.inner_struct(proto_info),
         struct_init=ph.inner_struct_init(proto_info),
     ))
+    g.o("const static Trck__Results__Result__TupleZ TUPLEZ_DEFAULT = TRCK__RESULTS__RESULT__TUPLE_Z__INIT;")  # Change me
 
 
 def gen_proto_add_int(g, program, proto_info):
@@ -1026,7 +1047,58 @@ def gen_proto_add_int(g, program, proto_info):
 
 def gen_proto_add_set(g, program, proto_info):
     with BRACES(g, "void proto_add_set(void *p, char *name, set_t *value)"):
-        pass
+        g.o("{struct} *msg = ({struct} *) p;".format(struct=ph.inner_struct(proto_info)))
+        print(program.yield_sets)
+        for yield_set in program.yield_sets:
+            set_name = "var_{}".format(yield_set)
+            with BRACES(g, "if (!strcmp(name, \"#{}\"))".format(yield_set)):
+                g.o("msg->n_{set} = judy_size(value);".format(set=set_name))
+                g.o("msg->{set} = malloc(msg->n_{set} * sizeof(void *));".format(set=set_name))
+
+                g.o("int i = 0;")
+                g.o("uint8_t index[MAXLINELEN];")
+                g.o("index[0] = '\\0';")
+                g.o("Word_t *pv;")
+                g.o("JSLF(pv, *value, index);")
+                with BRACES(g, "while(pv)"):
+                    g.o("char buf[1024];")
+
+                    g.o("char *tail = (char*) index;")
+                    g.o("int res_len;")
+                    g.o("int res_type;")
+                    yield_names = program.get_yield_names('#' + yield_set)
+                    if len(yield_names) == 1:
+                        # msg->set_name is a char**
+                        g.o("tail = string_tuple_extract_head(tail, sizeof(buf), (uint8_t *)buf, &res_len, &res_type);")
+                        g.o("buf[res_len] = '\\0';")
+                        g.o("msg->{set}[i] = malloc(sizeof(char) * (res_len + 1));".format(set=set_name))
+                        g.o("strncpy(msg->{set}[i], buf, res_len + 1);".format(set=set_name))
+                    else:
+                        # msg->set_name is a struct**
+                        g.o("msg->{set}[i] = malloc(sizeof({struct}));".format(
+                            set=set_name,
+                            struct="Trck__Results__Result__TupleZ"))  # Change me
+                        g.o("*(msg->{set}[i]) = {default};".format(
+                            set=set_name,
+                            default="TUPLEZ_DEFAULT"))
+                        for yield_name in yield_names:
+                            field_name = "field_{}".format(yield_name)
+                            g.o("tail = string_tuple_extract_head(tail, sizeof(buf), (uint8_t *)buf, &res_len, &res_type);")
+                            g.o("buf[res_len] = '\\0';")
+                            if yield_name == 'timestamp':
+                                g.o("msg->{set}[i]->{field} = 0;".format(
+                                    set=set_name,
+                                    field=field_name)); # Fixme
+                            else:
+                                g.o("msg->{set}[i]->{field} = malloc(sizeof(char) * (res_len + 1));".format(
+                                    set=set_name,
+                                    field=field_name))
+                                g.o("strncpy(msg->{set}[i]->{field}, buf, res_len + 1);".format(
+                                    set=set_name,
+                                    field=field_name))
+
+                    g.o("i++;")
+                    g.o("JSLN(pv, *value, index);")
 
 
 def gen_proto_add_multiset(g, program, proto_info):
