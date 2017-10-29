@@ -85,7 +85,6 @@ void json_add_int(void *p, char *name, int64_t value) {
     printf(":%lld", value);
 }
 
-
 static const uint8_t HEXCHARS[] =
     "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
     "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
