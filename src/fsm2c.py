@@ -1052,7 +1052,7 @@ def gen_proto_add_set(g, program, proto_info):
         for yield_set in program.yield_sets:
             set_name = "var_{}".format(yield_set)
             with BRACES(g, "if (!strcmp(name, \"#{}\"))".format(yield_set)):
-                g.o("msg->n_{set} = judy_size(value);".format(set=set_name))
+                g.o("msg->n_{set} = JSL_size(value);".format(set=set_name))
                 g.o("msg->{set} = malloc(msg->n_{set} * sizeof(void *));".format(set=set_name))
 
                 g.o("int i = 0;")
