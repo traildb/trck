@@ -274,6 +274,7 @@ def main():
                                                 'out_traildb.h'],
                                       groupby=flat_rules.get('groupby'),
                                       out=c_src)
+
                     if args.proto:
                         proto_info = ProtoInfo('trck', 'Results', ('rows', 'Result'), args.proto)
                         with open(os.path.join(gen_path, 'results_protobuf.c'), 'w') as proto_src:
@@ -287,7 +288,6 @@ def main():
                                 proto_info=proto_info,
                                 out=proto_src)
 
-                        print(proto_info.path)
                         subprocess.call([
                             "protoc",
                             "--c_out={}".format(gen_path),
@@ -330,8 +330,7 @@ def main():
                     print_("Compilation failed", level='error')
                     sys.exit(1)
             finally:
-                print("gen_path {}".format(gen_path))
-                # shutil.rmtree(gen_path)
+                shutil.rmtree(gen_path)
 
             deltat = time.time() - t1
             print_("Produced binary in %s in %.2f seconds with %s[%s]" % (args.output_file,
