@@ -288,7 +288,13 @@ def main():
                                 proto_info=proto_info,
                                 out=proto_src)
 
-                        subprocess.call(["protoc", "--c_out={}".format(gen_path), "Results.proto", "Tuple.proto"])
+                        subprocess.call([
+                            "protoc",
+                            "--c_out={}".format(gen_path),
+                            # Compile the following proto files and place them into gen_path
+                            proto_info.path,
+                            "Tuple.proto",
+                        ])
 
 
                 src_path = make_absolute('../src')
