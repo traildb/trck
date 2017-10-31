@@ -205,15 +205,6 @@ def check_openmp_osx():
         return False
 
 
-def copy_proto_files(gen_path, proto):
-    header_file = proto.pb_header(basename=True)
-    src_file = proto.pb_src(basename=True)
-    shutil.copyfile(header_file, os.path.join(gen_path, header_file))
-    shutil.copyfile(src_file, os.path.join(gen_path, src_file))
-    shutil.copyfile("Tuple.pb-c.h", os.path.join(gen_path, "Tuple.pb-c.h"))
-    shutil.copyfile("Tuple.pb-c.c", os.path.join(gen_path, "Tuple.pb-c.c"))
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("program_name", help="program")
@@ -297,7 +288,8 @@ def main():
                                 proto_info=proto_info,
                                 out=proto_src)
 
-                        copy_proto_files(gen_path, proto_info)
+                        subprocess.call(["protoc", "--c_out={}".format(gen_path), "Results.proto", "Tuple.proto"])
+
 
                 src_path = make_absolute('../src')
 
