@@ -1,18 +1,16 @@
 syntax = "proto2";
 
+import "Tuple.proto";
+
 package trck;
 
 message Results {
   message Result {
-    message Tuple_z {
-      required string field_a = 3;
-      required string field_type = 4;
-    }
-    required string param_a = 1;
-    required string param_b = 2;
-    repeated string var_x = 3;
-    required int64 var_y = 4;
-    repeated Tuple_z var_z = 5;
+    optional string scalar_a = 1;
+    optional string scalar_b = 2;
+    repeated string set_x = 3;
+    optional int64 counter_y = 4;
+    repeated trck.Tuple set_z = 5;
   }
   repeated Result rows = 1;
 }
