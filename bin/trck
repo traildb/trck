@@ -13,14 +13,12 @@ import trparser
 import fsm2c
 import proto_helpers
 
-proto_info = ('Trck', 'Results', 'rows', 'Result', './Results.proto')
-
 
 def capitalize(x):
     return x[0].upper() + x[1:]
 
 
-def camelcase(x):
+def snake_case(x):
     """ ResultTupleExample -> Result_Tuple_Example
         lowerUpper -> Lower_Upper
     """
@@ -55,13 +53,13 @@ class ScalarProtoInfo(object):
         return "{}__{}".format(capitalize(self.package), self.struct)
 
     def to_struct_init(self):
-        return "{}__{}__INIT".format(self.package.upper(), self.struct.upper())
+        return "{}__{}__INIT".format(snake_case(self.package).upper(), snake_case(self.struct).upper())
 
     def to_get_packed_size(self):
-        return "{}__{}__get_packed_size".format(self.package.lower(), self.struct.lower())
+        return "{}__{}__get_packed_size".format(snake_case(self.package).lower(), snake_case(self.struct).lower())
 
     def to_pack(self):
-        return "{}__{}__pack".format(self.package.lower(), self.struct.lower())
+        return "{}__{}__pack".format(snake_case(self.package).lower(), snake_case(self.struct).lower())
 
 
 class ProtoInfo(ScalarProtoInfo):
@@ -80,13 +78,13 @@ class ProtoInfo(ScalarProtoInfo):
 
     def to_row_struct_init(self):
         return "{}__{}__{}__INIT".format(
-            self.package.upper(),
-            self.struct.upper(),
-            self.row_name_struct[1].upper(),
+            snake_case(self.package).upper(),
+            snake_case(self.struct).upper(),
+            snake_case(self.row_name_struct[1]).upper(),
         )
 
     def to_row_name(self):
-        return self.row_name_struct[0]
+        return self.row_name_struct[0].lower()
 
 
 def print_(s, level='info'):
@@ -276,7 +274,7 @@ def main():
                                       groupby=flat_rules.get('groupby'),
                                       out=c_src)
                     if args.proto:
-                        proto_info = ProtoInfo('trck', 'Results', ('rows', 'Result'), './Results.proto')
+                        proto_info = ProtoInfo('trck', 'Results', ('rows', 'Result'), args.proto)
                         with open(os.path.join(gen_path, 'results_protobuf.c'), 'w') as proto_src:
                             fsm2c.compile_proto(
                                 flat_rules["rules"],
