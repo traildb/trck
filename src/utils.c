@@ -62,6 +62,16 @@ void string_tuple_init(string_tuple_t *tuple)
     tuple->len = 0;
 }
 
+
+int string_tuple_size(char* index) {
+    int count = 1;
+    for (int i = 0; index[i] != '\0'; i++) {
+        if (index[i] ==  ',') count++;
+    }
+    return count;
+}
+
+
 /*
  * Tuple encoding is done as follows: most bytes are left as is, except
  * 0x00  -> 0xff 0xfe

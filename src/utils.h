@@ -27,6 +27,12 @@ typedef struct json_object json_object;
 void string_tuple_init(string_tuple_t *tuple);
 
 /*
+ * Count the number of elements in the tuple.
+ */
+int string_tuple_size(char* index);
+
+
+/*
  * Add an item to a tuple. Type is one of the types above.
  *
  * - use BYTES type for encoding binary strings that may contain zero bytes
