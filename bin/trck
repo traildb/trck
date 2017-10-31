@@ -254,6 +254,7 @@ def main():
 
             gen_path = tempfile.mkdtemp()
             try:
+                src_path = make_absolute('../src')
                 if args.gen_c:
                     fsm2c.compile(flat_rules["rules"],
                                   includes=['fns_imported.h',
@@ -286,16 +287,16 @@ def main():
                                 proto_info=proto_info,
                                 out=proto_src)
 
+                        print(proto_info.path)
                         subprocess.call([
                             "protoc",
                             "--c_out={}".format(gen_path),
+                            "--proto_path={}".format(src_path),
+                            "--proto_path={}".format(os.path.dirname(proto_info.path)),
                             # Compile the following proto files and place them into gen_path
-                            proto_info.path,
+                            os.path.basename(proto_info.path),
                             "Tuple.proto",
                         ])
-
-
-                src_path = make_absolute('../src')
 
                 with open(os.path.join(gen_path, 'out_traildb.h'), 'w') as h_src:
                     fsm2c.gen_header(flat_rules["rules"],
