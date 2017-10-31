@@ -13,6 +13,81 @@ import trparser
 import fsm2c
 import proto_helpers
 
+proto_info = ('Trck', 'Results', 'rows', 'Result', './Results.proto')
+
+
+def capitalize(x):
+    return x[0].upper() + x[1:]
+
+
+def camelcase(x):
+    """ ResultTupleExample -> Result_Tuple_Example
+        lowerUpper -> Lower_Upper
+    """
+    y = x[0].upper()
+    for i in x[1:]:
+        if i.isupper():
+            y += "_" + i
+        else:
+            y += i
+    return y
+
+
+class ScalarProtoInfo(object):
+    def __init__(self, package=None, struct=None, path=None):
+        self.package = package if package else "trck"
+        self.struct = struct if struct else "Result"
+        self.path = path if path else "./Results.proto"
+
+    def pb_header(self, basename=False):
+        pb_src_file = self.path
+        if basename:
+            pb_src_file = os.path.basename(pb_src_file)
+        return pb_src_file.replace(".proto", ".pb-c.h")
+
+    def pb_src(self, basename=False):
+        pb_src_file = self.path
+        if basename:
+            pb_src_file = os.path.basename(pb_src_file)
+        return pb_src_file.replace(".proto", ".pb-c.c")
+
+    def to_struct(self):
+        return "{}__{}".format(capitalize(self.package), self.struct)
+
+    def to_struct_init(self):
+        return "{}__{}__INIT".format(self.package.upper(), self.struct.upper())
+
+    def to_get_packed_size(self):
+        return "{}__{}__get_packed_size".format(self.package.lower(), self.struct.lower())
+
+    def to_pack(self):
+        return "{}__{}__pack".format(self.package.lower(), self.struct.lower())
+
+
+class ProtoInfo(ScalarProtoInfo):
+    def __init__(self, package=None, struct=None, row_name_struct=None, path=None):
+        self.package = package if package else "trck"
+        self.struct = struct if struct else "Results"
+        self.path = path if path else "./Results.proto"
+        self.row_name_struct = row_name_struct if row_name_struct else ("rows", "Result")
+
+    def to_row_struct(self):
+        return "{}__{}__{}".format(
+            capitalize(self.package),
+            self.struct,
+            self.row_name_struct[1],
+        )
+
+    def to_row_struct_init(self):
+        return "{}__{}__{}__INIT".format(
+            self.package.upper(),
+            self.struct.upper(),
+            self.row_name_struct[1].upper(),
+        )
+
+    def to_row_name(self):
+        return self.row_name_struct[0]
+
 
 def print_(s, level='info'):
     sys.stderr.write("%s\n" % s)
@@ -131,10 +206,12 @@ def check_openmp_osx():
 
 
 def copy_proto_files(gen_path, proto):
-    header_file = proto_helpers.pb_header(proto, basename=True)
-    src_file = proto_helpers.pb_src(proto, basename=True)
+    header_file = proto.pb_header(basename=True)
+    src_file = proto.pb_src(basename=True)
     shutil.copyfile(header_file, os.path.join(gen_path, header_file))
     shutil.copyfile(src_file, os.path.join(gen_path, src_file))
+    shutil.copyfile("Tuple.pb-c.h", os.path.join(gen_path, "Tuple.pb-c.h"))
+    shutil.copyfile("Tuple.pb-c.c", os.path.join(gen_path, "Tuple.pb-c.c"))
 
 
 def main():
@@ -208,13 +285,13 @@ def main():
                                       groupby=flat_rules.get('groupby'),
                                       out=c_src)
                     if args.proto:
-                        proto_info = ('Trck', 'Results', 'rows', 'Result', './Results.proto')
+                        proto_info = ProtoInfo('trck', 'Results', ('rows', 'Result'), './Results.proto')
                         with open(os.path.join(gen_path, 'results_protobuf.c'), 'w') as proto_src:
                             fsm2c.compile_proto(
                                 flat_rules["rules"],
                                 includes=[
                                     'results_protobuf.h',
-                                    proto_helpers.pb_header(proto_info, basename=True),
+                                    proto_info.pb_header(basename=True),
                                 ],
                                 groupby=flat_rules.get('groupby'),
                                 proto_info=proto_info,
@@ -238,7 +315,8 @@ def main():
                 if args.proto:
                     sources += [
                         j(gen_path, "results_protobuf.c"),
-                        j(gen_path, proto_helpers.pb_src(proto_info, basename=True))
+                        j(gen_path, proto_info.pb_src(basename=True)),
+                        j(gen_path, "Tuple.pb-c.c"),
                     ]
 
                 if args.static:
@@ -255,7 +333,8 @@ def main():
                     print_("Compilation failed", level='error')
                     sys.exit(1)
             finally:
-                shutil.rmtree(gen_path)
+                print("gen_path {}".format(gen_path))
+                # shutil.rmtree(gen_path)
 
             deltat = time.time() - t1
             print_("Produced binary in %s in %.2f seconds with %s[%s]" % (args.output_file,
