@@ -311,10 +311,10 @@ def main():
                         j(src_path, "match_traildb.c"),
                         j(src_path, "statevec.c"),
                         j(gen_path, "out_traildb.c"),
+                        j(gen_path if args.proto else src_path, "results_protobuf.c"),
                 ]
                 if args.proto:
                     sources += [
-                        j(gen_path, "results_protobuf.c"),
                         j(gen_path, proto_info.pb_src(basename=True)),
                         j(gen_path, "Tuple.pb-c.c"),
                     ]

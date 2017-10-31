@@ -1127,7 +1127,10 @@ int run_query(char **traildb_paths, int num_paths,
             output_msgpack(&gi, results);
             break;
         case FORMAT_PROTO:
-            // TODO: Raise error if proto-file was not provided during compilation
+            CHECK(protobuf_enabled, "Program was not compiled with a .proto file," \
+                "therefore protobuf output is not supported with this executable." \
+                " Try specifying a proto file with --proto.");
+
             output_proto(&gi, results);
             break;
         default:

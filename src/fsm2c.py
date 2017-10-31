@@ -1036,6 +1036,8 @@ def gen_prologue_proto(g, program, proto_info, includes):
 
     g.o("const static Trck__Tuple TRCK_TUPLE_DEFAULT = TRCK__TUPLE__INIT;")
 
+    g.o("const int protobuf_enabled = 1;")
+
 
 def gen_proto_add_int(g, program, proto_info):
     with BRACES(g, "void proto_add_int(void *p, char *name, int64_t value)"):
