@@ -19,7 +19,7 @@ bindir=/usr/local/bin
 includedir?=/usr/include
 libdir?=/usr/lib
 
-install: msgpack all
+install: msgpack protobuf all
 	install -m 0755 -d $(datarootdir)/trck/src $(datarootdir)/trck/bin $(datarootdir)/trck/lib
 	install -m 0755 -d $(includedir)/xxhash
 	install -m 0644 -t $(datarootdir)/trck/src/ src/*.c src/*.py src/*.h
@@ -33,6 +33,11 @@ install: msgpack all
 
 CSRCS = foreach_util.c mempool.c traildb_filter.c distinct.c utf8_check.c results_json.c results_msgpack.c utils.c judy_128_map.c window_set.c ctx.c db.c hyperloglog.c xxhash/xxhash.c judy_str_map.c
 COBJS  = $(addprefix lib/, $(notdir $(patsubst %.c,%.o,$(CSRCS))))
+
+protobuf:
+	pushd deps/protobuf && ./autogen.sh && ./configure && make && make install && ldconfig && popd
+	pushd deps/protobuf-c && ./autogen.sh && ./configure && make && make install && popd
+	pushd deps/protobuf/python && python setup.py build --cpp_implementation && python setup.py install --cpp_implementation && popd
 
 msgpack:
 	cd deps/msgpack-c && cmake . && make && make install
