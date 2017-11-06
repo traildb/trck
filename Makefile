@@ -35,9 +35,9 @@ CSRCS = foreach_util.c mempool.c traildb_filter.c distinct.c utf8_check.c result
 COBJS  = $(addprefix lib/, $(notdir $(patsubst %.c,%.o,$(CSRCS))))
 
 protobuf:
-	pushd deps/protobuf && ./autogen.sh && ./configure && make && make install && ldconfig && popd
-	pushd deps/protobuf-c && ./autogen.sh && ./configure && make && make install && popd
-	pushd deps/protobuf/python && python setup.py build --cpp_implementation && python setup.py install --cpp_implementation && popd
+	cd deps/protobuf && ./autogen.sh && ./configure && make && make install && ldconfig
+	cd deps/protobuf-c && ./autogen.sh && ./configure && make && make install
+	cd deps/protobuf/python && python setup.py build --cpp_implementation && python setup.py install --cpp_implementation
 
 msgpack:
 	cd deps/msgpack-c && cmake . && make && make install
