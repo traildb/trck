@@ -481,7 +481,7 @@ class Program:
         names = {tuple(i['name'] for i in src) for src in sources}
 
         if len(names) != 1:
-            raise Exception("Protobuf programs must yield the same types to a single set")
+            raise Exception("Yielding to {}. Protobuf programs must yield the same tuple arities for the same set".format(set_name))
 
         return names.pop()
 
@@ -917,10 +917,14 @@ def gen_get_result_size(g, program):
         g.o("return sizeof(results_t);")
 
 
-def compile(rules, includes, groupby, out=sys.stdout):
-    g = Gen(out)
+def make_ast(rules, groupby):
     program = Program(rules, groupby=groupby)
     preprocess(program)
+    return program
+
+
+def compile(program, includes, out=sys.stdout):
+    g = Gen(out)
     gen_prologue(g, program, includes=includes)
     gen_db_init(g, program)
     gen_trail_init(g, program)
@@ -952,10 +956,8 @@ def compile(rules, includes, groupby, out=sys.stdout):
         g.o("return abort;")
 
 
-def compile_proto(rules, includes, groupby, proto_info, out=sys.stdout):
+def compile_proto(program, includes, proto_info, out=sys.stdout):
     g = Gen(out)
-    program = Program(rules, groupby=groupby)
-    preprocess(program)
     gen_prologue_proto(g, program, proto_info, includes=includes)
     gen_proto_add_int(g, program, proto_info)
     gen_proto_add_set(g, program, proto_info)
@@ -975,10 +977,8 @@ def gen_external_function_declarations(g, program):
         g.o("int %s(%s);" % (fname, ",".join(args)))
 
 
-def gen_header(rules, groupby, out=sys.stdout):
+def gen_header(program, groupby, out=sys.stdout):
     g = Gen(out)
-    program = Program(rules, groupby=groupby)
-    preprocess(program)
     g.o("#ifndef __OUT_TRAILDB_H__")
     g.o("#define __OUT_TRAILDB_H__")
     g.o("#define EXPIRES_NEVER %s" % EXPIRES_NEVER)

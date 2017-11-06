@@ -14,79 +14,6 @@ import fsm2c
 import proto_helpers
 
 
-def capitalize(x):
-    return x[0].upper() + x[1:]
-
-
-def snake_case(x):
-    """ ResultTupleExample -> Result_Tuple_Example
-        lowerUpper -> Lower_Upper
-    """
-    y = x[0].upper()
-    for i in x[1:]:
-        if i.isupper():
-            y += "_" + i
-        else:
-            y += i
-    return y
-
-
-class ScalarProtoInfo(object):
-    def __init__(self, package=None, struct=None, path=None):
-        self.package = package if package else "trck"
-        self.struct = struct if struct else "Result"
-        self.path = path if path else "./Results.proto"
-
-    def pb_header(self, basename=False):
-        pb_src_file = self.path
-        if basename:
-            pb_src_file = os.path.basename(pb_src_file)
-        return pb_src_file.replace(".proto", ".pb-c.h")
-
-    def pb_src(self, basename=False):
-        pb_src_file = self.path
-        if basename:
-            pb_src_file = os.path.basename(pb_src_file)
-        return pb_src_file.replace(".proto", ".pb-c.c")
-
-    def to_struct(self):
-        return "{}__{}".format(capitalize(self.package), self.struct)
-
-    def to_struct_init(self):
-        return "{}__{}__INIT".format(snake_case(self.package).upper(), snake_case(self.struct).upper())
-
-    def to_get_packed_size(self):
-        return "{}__{}__get_packed_size".format(snake_case(self.package).lower(), snake_case(self.struct).lower())
-
-    def to_pack(self):
-        return "{}__{}__pack".format(snake_case(self.package).lower(), snake_case(self.struct).lower())
-
-
-class ProtoInfo(ScalarProtoInfo):
-    def __init__(self, package=None, struct=None, row_name_struct=None, path=None):
-        self.package = package if package else "trck"
-        self.struct = struct if struct else "Results"
-        self.path = path if path else "./Results.proto"
-        self.row_name_struct = row_name_struct if row_name_struct else ("rows", "Result")
-
-    def to_row_struct(self):
-        return "{}__{}__{}".format(
-            capitalize(self.package),
-            self.struct,
-            self.row_name_struct[1],
-        )
-
-    def to_row_struct_init(self):
-        return "{}__{}__{}__INIT".format(
-            snake_case(self.package).upper(),
-            snake_case(self.struct).upper(),
-            snake_case(self.row_name_struct[1]).upper(),
-        )
-
-    def to_row_name(self):
-        return self.row_name_struct[0].lower()
-
-
 def print_(s, level='info'):
     sys.stderr.write("%s\n" % s)
 
@@ -255,51 +182,51 @@ def main():
             gen_path = tempfile.mkdtemp()
             try:
                 src_path = make_absolute('../src')
+                program = fsm2c.make_ast(flat_rules["rules"], flat_rules.get('groupby'))
                 if args.gen_c:
-                    fsm2c.compile(flat_rules["rules"],
+                    fsm2c.compile(program,
                                   includes=['fns_imported.h',
                                             'out_traildb.h'],
-                                  groupby=flat_rules.get('groupby'),
                                   out=sys.stdout)
                     return
                 elif args.gen_h:
-                    fsm2c.gen_header(flat_rules["rules"],
+                    fsm2c.gen_header(program,
                                      groupby=flat_rules.get('groupby'),
                                      out=sys.stdout)
                     return
                 else:
                     with open(os.path.join(gen_path, 'out_traildb.c'), 'w') as c_src:
-                        fsm2c.compile(flat_rules["rules"],
+                        fsm2c.compile(program,
                                       includes=['fns_imported.h',
                                                 'out_traildb.h'],
-                                      groupby=flat_rules.get('groupby'),
                                       out=c_src)
 
                     if args.proto:
-                        proto_info = ProtoInfo('trck', 'Results', ('rows', 'Result'), args.proto)
+                        proto_info = proto_helpers.ProtoInfo('trck', 'Results', ('rows', 'Result'), args.proto)
                         with open(os.path.join(gen_path, 'results_protobuf.c'), 'w') as proto_src:
                             fsm2c.compile_proto(
-                                flat_rules["rules"],
+                                program,
                                 includes=[
                                     'results_protobuf.h',
                                     proto_info.pb_header(basename=True),
                                 ],
-                                groupby=flat_rules.get('groupby'),
                                 proto_info=proto_info,
                                 out=proto_src)
 
                         subprocess.call([
                             "protoc",
                             "--c_out={}".format(gen_path),
+                            "--python_out={}".format(gen_path),
                             "--proto_path={}".format(src_path),
                             "--proto_path={}".format(os.path.dirname(proto_info.path)),
                             # Compile the following proto files and place them into gen_path
                             os.path.basename(proto_info.path),
                             "Tuple.proto",
                         ])
+                        proto_info.validate_fields(gen_path, program)
 
                 with open(os.path.join(gen_path, 'out_traildb.h'), 'w') as h_src:
-                    fsm2c.gen_header(flat_rules["rules"],
+                    fsm2c.gen_header(program,
                                      groupby=flat_rules.get('groupby'),
                                      out=h_src)
 
