@@ -101,10 +101,13 @@ class ProtoInfo(ScalarProtoInfo):
         return self.row_name_struct[0].lower()
 
     def to_row_struct_descriptor(self):
-        return "_{struct}_{row_struct}".format(self.struct.upper(), self.row_name_struct[1].upper())
+        return "_{struct}_{row_struct}".format(
+            struct=self.struct.upper(),
+            row_struct=self.row_name_struct[1].upper())
 
     def to_struct_descriptor(self):
-        return "_{struct}".format(self.struct.upper())
+        return "_{struct}".format(
+            struct=self.struct.upper())
 
     def get_proto_fields(self, gen_path):
         sys.path.append(gen_path)
