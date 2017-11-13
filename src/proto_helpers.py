@@ -203,5 +203,5 @@ def descriptor_fields(desc):
 def import_from_path(proto):
     _path, filename = os.path.split(proto)
     name, _extension = os.path.splitext(filename)
-    module = "{}_pb2".format(name)
+    module = "{}_pb2".format(name.replace('-', '_'))
     return importlib.import_module(module)
