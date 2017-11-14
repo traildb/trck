@@ -1084,8 +1084,8 @@ def gen_proto_add_set(g, program, proto_info):
                             set=set_name,
                             default="TRCK_TUPLE_DEFAULT"))
                         g.o("int size = string_tuple_size(tail);")
-                        g.o("msg->set_z[i]->values = malloc(size * sizeof(char *));")
-                        g.o("msg->set_z[i]->n_values = size;")
+                        g.o("msg->{set}[i]->values = malloc(size * sizeof(char *));".format(set=set_name))
+                        g.o("msg->{set}[i]->n_values = size;".format(set=set_name))
                         g.o("int j = 0;")
                         with BRACES(g, "while(!string_tuple_is_empty(tail))"):
                             g.o("tail = string_tuple_extract_head(tail, sizeof(buf), (uint8_t *)buf, &res_len, &res_type);")

@@ -77,9 +77,7 @@ class ScalarProtoInfo(object):
 
 class ProtoInfo(ScalarProtoInfo):
     def __init__(self, package=None, struct=None, row_name_struct=None, path=None):
-        self.package = package if package else "trck"
-        self.struct = struct if struct else "Results"
-        self.path = path if path else "./Results.proto"
+        super(ProtoInfo, self).__init__(package, struct, path)
         self.row_name_struct = row_name_struct if row_name_struct else ("rows", "Result")
         self.scalar = False
 
@@ -155,6 +153,7 @@ class ProtoInfo(ScalarProtoInfo):
                 # Expect a repeated tuple
                 if name not in row_fields:
                     raise Exception("{} repeated tuple must be defined in proto file".format(name))
+                field_type, field_label = row_fields[name]
                 if field_type != TYPE_MESSAGE:
                     raise Exception("{} must be a repeated tuple since multiple values are yielded to it".format(name))
                 if field_label != LABEL_REPEATED:
