@@ -70,20 +70,39 @@ def generate(name):
 	tdb_cons.finalize()
 
 
+def parse_long(length):
+	return ord(length[0]) \
+	| ord(length[1]) << 8 \
+	| ord(length[2]) << 16 \
+	| ord(length[3]) << 24 \
+	| ord(length[4]) << 32 \
+	| ord(length[5]) << 40 \
+	| ord(length[6]) << 48 \
+	| ord(length[7]) << 56
+
+
+def stream_results(f, cls):
+	while True:
+		length = f.read(8)
+		if length == '':
+			raise StopIteration()
+		n = parse_long(length)
+		msg = f.read(n)
+		res = cls()
+		res.ParseFromString(msg)
+		yield res
+
 def dump(name):
 	import Results_pb2
-	res = Results_pb2.Results()
 	with open(name, "rb") as f:
-		res.ParseFromString(f.read())
-
-	for row in res.rows:
-		print("a={} b={} y={} x={} z={}".format(
-			row.scalar_a,
-			row.scalar_b,
-			row.counter_y,
-			list(row.set_x),
-			[z.values for z in row.set_z],
-		))
+		for row in stream_results(f, Results_pb2.Result):
+			print("a={} b={} y={} x={} z={}".format(
+				row.scalar_a,
+				row.scalar_b,
+				row.counter_y,
+				list(row.set_x),
+				[z.values for z in row.set_z],
+			))
 
 
 if __name__ == "__main__":

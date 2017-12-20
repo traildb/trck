@@ -4,13 +4,10 @@ import "Tuple.proto";
 
 package trck;
 
-message Results {
-  message Result {
-    optional string scalar_a = 1;
-    optional string scalar_b = 2;
-    repeated string set_x = 3;
-    optional int64 counter_y = 4;
-    repeated trck.Tuple set_z = 5;
-  }
-  repeated Result rows = 1;
+message Result {
+	optional string scalar_a = 1;
+	optional string scalar_b = 2;
+	repeated string set_x = 3;
+	optional int64 counter_y = 4;
+	repeated trck.Tuple set_z = 5;
 }
