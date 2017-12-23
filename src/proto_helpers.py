@@ -40,12 +40,11 @@ TYPE_SINT64   = 18
 MAX_TYPE      = 18
 
 
-class ScalarProtoInfo(object):
+class ProtoInfo(object):
     def __init__(self, package=None, struct=None, path=None):
         self.package = package if package else "trck"
         self.struct = struct if struct else "Result"
         self.path = path if path else "./Results.proto"
-        self.scalar = True
 
     def pb_header(self, basename=False):
         pb_src_file = self.path
@@ -71,38 +70,6 @@ class ScalarProtoInfo(object):
     def to_pack(self):
         return "{}__{}__pack".format(snake_case(self.package).lower(), snake_case(self.struct).lower())
 
-    def validate_fields(self, gen_path, program):
-        pass
-
-
-class ProtoInfo(ScalarProtoInfo):
-    def __init__(self, package=None, struct=None, row_name_struct=None, path=None):
-        super(ProtoInfo, self).__init__(package, struct, path)
-        self.row_name_struct = row_name_struct if row_name_struct else ("rows", "Result")
-        self.scalar = False
-
-    def to_row_struct(self):
-        return "{}__{}__{}".format(
-            capitalize(self.package),
-            self.struct,
-            self.row_name_struct[1],
-        )
-
-    def to_row_struct_init(self):
-        return "{}__{}__{}__INIT".format(
-            snake_case(self.package).upper(),
-            snake_case(self.struct).upper(),
-            snake_case(self.row_name_struct[1]).upper(),
-        )
-
-    def to_row_name(self):
-        return self.row_name_struct[0].lower()
-
-    def to_row_struct_descriptor(self):
-        return "_{struct}_{row_struct}".format(
-            struct=self.struct.upper(),
-            row_struct=self.row_name_struct[1].upper())
-
     def to_struct_descriptor(self):
         return "_{struct}".format(
             struct=self.struct.upper())
@@ -110,18 +77,17 @@ class ProtoInfo(ScalarProtoInfo):
     def get_proto_fields(self, gen_path):
         sys.path.append(gen_path)
         mod = import_from_path(self.path)
-        struct_fields = descriptor_fields(getattr(mod, self.to_struct_descriptor()))
-        row_fields = descriptor_fields(getattr(mod, self.to_row_struct_descriptor()))
-        return struct_fields, row_fields
+        row_fields = descriptor_fields(getattr(mod, self.to_struct_descriptor()))
+        return row_fields
 
     def validate_fields(self, gen_path, program):
-        struct_fields, row_fields = self.get_proto_fields(gen_path)
+        fields = self.get_proto_fields(gen_path)
 
         for scalar in program.groupby['vars']:
             name = proto_scalar(scalar)
-            if name not in row_fields:
+            if name not in fields:
                 raise Exception("{} string must be defined in proto file".format(name))
-            field_type, field_label = row_fields[name]
+            field_type, field_label = fields[name]
             if field_type != TYPE_STRING:
                 raise Exception("{} must be a string".format(name))
             if field_label == LABEL_REPEATED:
@@ -129,10 +95,10 @@ class ProtoInfo(ScalarProtoInfo):
 
         for yield_counter in program.yield_counters:
             name = proto_counter(yield_counter)
-            if name not in row_fields:
+            if name not in fields:
                 raise Exception("{} int64 must be defined in proto file".format(name))
-            field_type, field_label = row_fields[name]
-            if field_type != TYPE_INT64:
+            field_type, field_label = fields[name]
+            if field_type != TYPE_FIXED64:
                 raise Exception("{} must be int64 type since it is a counter".format(name))
             if field_label == LABEL_REPEATED:
                 raise Exception("{} must not be repeated since it is a counter".format(name))
@@ -142,18 +108,18 @@ class ProtoInfo(ScalarProtoInfo):
             yield_names = program.get_yield_names("#{}".format(yield_set))
             if len(yield_names) == 1:
                 # Expect a repeated string type
-                if name not in row_fields:
+                if name not in fields:
                     raise Exception("{} repeated string must be defined in proto file".format(name))
-                field_type, field_label = row_fields[name]
+                field_type, field_label = fields[name]
                 if field_type != TYPE_STRING:
                     raise Exception("{} must be a repeated string since it is a set".format(name))
                 if field_label != LABEL_REPEATED:
                     raise Exception("{} must be repeated since it is a set".format(name))
             else:
                 # Expect a repeated tuple
-                if name not in row_fields:
+                if name not in fields:
                     raise Exception("{} repeated tuple must be defined in proto file".format(name))
-                field_type, field_label = row_fields[name]
+                field_type, field_label = fields[name]
                 if field_type != TYPE_MESSAGE:
                     raise Exception("{} must be a repeated tuple since multiple values are yielded to it".format(name))
                 if field_label != LABEL_REPEATED:

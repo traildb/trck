@@ -202,7 +202,7 @@ def main():
                                       out=c_src)
 
                     if args.proto:
-                        proto_info = proto_helpers.ProtoInfo('trck', 'Results', ('rows', 'Result'), args.proto)
+                        proto_info = proto_helpers.ProtoInfo('trck', 'Result', args.proto)
                         with open(os.path.join(gen_path, 'results_protobuf.c'), 'w') as proto_src:
                             fsm2c.compile_proto(
                                 program,

@@ -1029,11 +1029,6 @@ def gen_prologue_proto(g, program, proto_info, includes):
     g.o("#endif")
     g.o("#define MAXLINELEN 1000000")
 
-    g.o("const static {struct} ROW_DEFAULT = {struct_init};".format(
-        struct=proto_info.to_row_struct(),
-        struct_init=proto_info.to_row_struct_init(),
-    ))
-
     g.o("const static Trck__Tuple TRCK_TUPLE_DEFAULT = TRCK__TUPLE__INIT;")
 
     g.o("const int protobuf_enabled = 1;")
@@ -1041,7 +1036,7 @@ def gen_prologue_proto(g, program, proto_info, includes):
 
 def gen_proto_add_int(g, program, proto_info):
     with BRACES(g, "void proto_add_int(void *p, char *name, int64_t value)"):
-        g.o("{struct} *msg = ({struct} *) p;".format(struct=proto_info.to_row_struct()))
+        g.o("{struct} *msg = ({struct} *) p;".format(struct=proto_info.to_struct()))
         for yield_counter in program.yield_counters:
             counter = ph.proto_counter(yield_counter)
             with BRACES(g, "if (!strcmp(name, \"{}\"))".format(yield_counter)):
@@ -1050,7 +1045,7 @@ def gen_proto_add_int(g, program, proto_info):
 
 def gen_proto_add_set(g, program, proto_info):
     with BRACES(g, "void proto_add_set(void *p, char *name, set_t *value)"):
-        g.o("{struct} *msg = ({struct} *) p;".format(struct=proto_info.to_row_struct()))
+        g.o("{struct} *msg = ({struct} *) p;".format(struct=proto_info.to_struct()))
         for yield_set in program.yield_sets:
             set_name = ph.proto_set(yield_set)
             with BRACES(g, "if (!strcmp(name, \"#{}\"))".format(yield_set)):
@@ -1111,52 +1106,46 @@ def gen_proto_add_hll(g, program, proto_info):
 
 
 def gen_output_groupby_result_proto(g, program, proto_info):
-    with BRACES(g, "{struct} *output_groupby_result_proto(groupby_info_t *gi, int i, results_t *results)".format(
-        struct=proto_info.to_row_struct())):
+    with BRACES(g, "void output_groupby_result_proto(groupby_info_t *gi, int i, results_t *results)"):
+        g.o("{struct} msg = {struct_init};".format(
+            struct=proto_info.to_struct(),
+            struct_init=proto_info.to_struct_init()))
         g.o("string_val_t *tuple = &gi->tuples[i * gi->num_vars];")
         g.o("results_t *pres = (results_t *)((uint8_t *)results + match_get_result_size() * i);")
-        g.o("{struct} *msg = malloc(sizeof({struct}));".format(struct=proto_info.to_row_struct()))
-        g.o("*msg = ROW_DEFAULT;")
 
         for i, param in enumerate(program.groupby['vars']):
             param_name = ph.proto_scalar(param)
-            g.o("msg->{param_name} = malloc(sizeof(char) * (tuple[{index}].len + 1));".format(
+            g.o("msg.{param_name} = malloc(sizeof(char) * (tuple[{index}].len + 1));".format(
                 param_name=param_name,
                 index=i))
-            g.o("strncpy(msg->{param_name}, tuple[{index}].str, (tuple[{index}].len + 1));".format(
+            g.o("strncpy(msg.{param_name}, tuple[{index}].str, (tuple[{index}].len + 1));".format(
                 param_name=param_name,
                 index=i))
-            g.o("msg->{param_name}[tuple[{index}].len] = '\\0';".format(
+            g.o("msg.{param_name}[tuple[{index}].len] = '\\0';".format(
                 param_name=param_name,
                 index=i))
 
         g.o("match_save_result(" \
             "pres, " \
-            "msg, " \
+            "&msg, " \
             "proto_add_int, " \
             "proto_add_set, " \
             "proto_add_multiset, " \
             "proto_add_hll);")
 
-        g.o("return msg;")
+        g.o("unsigned long len = {}(&msg);".format(proto_info.to_get_packed_size()))
+        g.o("void *buf = malloc(len);")
+        g.o("{}(&msg, buf);".format(proto_info.to_pack()))
+
+        g.o("fwrite(&len, sizeof(unsigned long), 1, stdout);")
+        g.o("fwrite(buf, len, 1, stdout);")
+        g.o("free(buf);")
 
 
 def gen_output_proto(g, program, proto_info):
     with BRACES(g, "void output_proto(groupby_info_t *gi, results_t *results)"):
-        g.o("{struct} msg = {struct_init};".format(
-            struct=proto_info.to_struct(),
-            struct_init=proto_info.to_struct_init()))
-        g.o("msg.n_{} = gi->num_tuples;".format(proto_info.to_row_name()))
-        g.o("msg.{rows} = malloc(msg.n_{rows} * sizeof(void *));".format(
-            rows=proto_info.to_row_name()))
-        with BRACES(g, "for (int i = 0; i < msg.n_{}; i++)".format(proto_info.to_row_name())):
-            g.o("msg.{}[i] = output_groupby_result_proto(gi, i, results);".format(proto_info.to_row_name()))
-
-        g.o("unsigned len = {}(&msg);".format(proto_info.to_get_packed_size()))
-        g.o("void *buf = malloc(len);")
-        g.o("{}(&msg, buf);".format(proto_info.to_pack()))
-        g.o("fwrite(buf, len, 1, stdout);")
-        g.o("free(buf);")
+        with BRACES(g, "for (int i = 0; i < gi->num_tuples; i++)"):
+            g.o("output_groupby_result_proto(gi, i, results);")
 
 
 if __name__ == '__main__':
