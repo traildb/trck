@@ -17,6 +17,7 @@ protoc --python_out=proto-example --proto_path=src --proto_path=proto-example Re
 python proto-example/test.py --dump proto-example/results.msg
 """
 import argparse
+import struct
 import fileinput
 import sys
 import traildb
@@ -71,26 +72,23 @@ def generate(name):
 
 
 def parse_long(length):
-	return ord(length[0]) \
-	| ord(length[1]) << 8 \
-	| ord(length[2]) << 16 \
-	| ord(length[3]) << 24 \
-	| ord(length[4]) << 32 \
-	| ord(length[5]) << 40 \
-	| ord(length[6]) << 48 \
-	| ord(length[7]) << 56
+	return struct.unpack("Q", length)[0]
 
 
-def stream_results(f, cls):
-	while True:
-		length = f.read(8)
-		if length == '':
-			raise StopIteration()
+def read_msgs(fobj):
+	length = fobj.read(8)
+	while length != "":
 		n = parse_long(length)
-		msg = f.read(n)
+		yield fobj.read(n)
+		length = fobj.read(8)
+
+
+def stream_results(fobj, cls):
+	for msg in read_msgs(fobj):
 		res = cls()
 		res.ParseFromString(msg)
 		yield res
+
 
 def dump(name):
 	import Results_pb2
