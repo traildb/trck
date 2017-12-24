@@ -5,13 +5,18 @@
 python proto-example/test.py --generate proto-example/testexample
 
 # Compile trck script
-bin/trck -c proto-example/example.tr -o matcher --proto ./proto-example/Results.proto
+bin/trck -c proto-example/example.tr -o matcher \
+    --proto ./proto-example/Results.proto
 
 # Run executable
-./matcher proto-example/testexample.tdb --params=proto-example/params.json --output-format proto > proto-example/results.msg
+./matcher proto-example/testexample.tdb \
+    --params=proto-example/params.json \
+    --output-format proto > proto-example/results.msg
 
 # Generate python stubs so we can dump the results
-protoc --python_out=proto-example --proto_path=src --proto_path=proto-example Results.proto Tuple.proto
+protoc --python_out=proto-example \
+    --proto_path=src \
+    --proto_path=proto-example Results.proto Tuple.proto
 
 # Dump the results
 python proto-example/test.py --dump proto-example/results.msg
