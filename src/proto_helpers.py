@@ -83,47 +83,57 @@ class ProtoInfo(object):
     def validate_fields(self, gen_path, program):
         fields = self.get_proto_fields(gen_path)
 
-        for scalar in program.groupby['vars']:
-            name = proto_scalar(scalar)
+        validate_scalars(program, fields)
+        validate_counters(program, fields)
+        validate_sets(program, fields)
+
+
+def validate_scalars(program, fields):
+    for scalar in program.groupby['vars']:
+        name = proto_scalar(scalar)
+        if name not in fields:
+            raise ValueError("{} string must be defined in proto file".format(name))
+        field_type, field_label = fields[name]
+        if field_type != TYPE_STRING:
+            raise ValueError("{} must be a string".format(name))
+        if field_label == LABEL_REPEATED:
+            raise ValueError("{} must not be repeated since it is a scalar".format(name))
+
+
+def validate_counters(program, fields):
+    for yield_counter in program.yield_counters:
+        name = proto_counter(yield_counter)
+        if name not in fields:
+            raise ValueError("{} fixed64 must be defined in proto file".format(name))
+        field_type, field_label = fields[name]
+        if field_type != TYPE_FIXED64:
+            raise ValueError("{} must be fixed64 type since it is a counter".format(name))
+        if field_label == LABEL_REPEATED:
+            raise ValueError("{} must not be repeated since it is a counter".format(name))
+
+
+def validate_sets(program, fields):
+    for yield_set in program.yield_sets:
+        name = proto_set(yield_set)
+        yield_names = program.get_yield_names("#{}".format(yield_set))
+        if len(yield_names) == 1:
+            # Expect a repeated string type
             if name not in fields:
-                raise Exception("{} string must be defined in proto file".format(name))
+                raise ValueError("{} repeated string must be defined in proto file".format(name))
             field_type, field_label = fields[name]
             if field_type != TYPE_STRING:
-                raise Exception("{} must be a string".format(name))
-            if field_label == LABEL_REPEATED:
-                raise Exception("{} must not be repeated since it is a scalar".format(name))
-
-        for yield_counter in program.yield_counters:
-            name = proto_counter(yield_counter)
+                raise ValueError("{} must be a repeated string since it is a set".format(name))
+            if field_label != LABEL_REPEATED:
+                raise ValueError("{} must be repeated since it is a set".format(name))
+        else:
+            # Expect a repeated tuple
             if name not in fields:
-                raise Exception("{} int64 must be defined in proto file".format(name))
+                raise ValueError("{} repeated tuple must be defined in proto file".format(name))
             field_type, field_label = fields[name]
-            if field_type != TYPE_FIXED64:
-                raise Exception("{} must be int64 type since it is a counter".format(name))
-            if field_label == LABEL_REPEATED:
-                raise Exception("{} must not be repeated since it is a counter".format(name))
-
-        for yield_set in program.yield_sets:
-            name = proto_set(yield_set)
-            yield_names = program.get_yield_names("#{}".format(yield_set))
-            if len(yield_names) == 1:
-                # Expect a repeated string type
-                if name not in fields:
-                    raise Exception("{} repeated string must be defined in proto file".format(name))
-                field_type, field_label = fields[name]
-                if field_type != TYPE_STRING:
-                    raise Exception("{} must be a repeated string since it is a set".format(name))
-                if field_label != LABEL_REPEATED:
-                    raise Exception("{} must be repeated since it is a set".format(name))
-            else:
-                # Expect a repeated tuple
-                if name not in fields:
-                    raise Exception("{} repeated tuple must be defined in proto file".format(name))
-                field_type, field_label = fields[name]
-                if field_type != TYPE_MESSAGE:
-                    raise Exception("{} must be a repeated tuple since multiple values are yielded to it".format(name))
-                if field_label != LABEL_REPEATED:
-                    raise Exception("{} must be repeated since it is a set".format(name))
+            if field_type != TYPE_MESSAGE:
+                raise ValueError("{} must be a repeated tuple since multiple values are yielded to it".format(name))
+            if field_label != LABEL_REPEATED:
+                raise ValueError("{} must be repeated since it is a set".format(name))
 
 
 def capitalize(x):
