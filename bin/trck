@@ -207,7 +207,6 @@ def main():
                             fsm2c.compile_proto(
                                 program,
                                 includes=[
-                                    'results_protobuf.h',
                                     proto_info.pb_header(basename=True),
                                 ],
                                 proto_info=proto_info,
