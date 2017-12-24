@@ -1041,6 +1041,7 @@ def gen_proto_add_int(g, program, proto_info):
             counter = ph.proto_counter(yield_counter)
             with BRACES(g, "if (!strcmp(name, \"{}\"))".format(yield_counter)):
                 g.o("msg->{} = value;".format(counter))
+                g.o("msg->has_{} = 1;".format(counter))
 
 
 def gen_proto_add_set(g, program, proto_info):
