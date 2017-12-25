@@ -40,6 +40,19 @@ TYPE_SINT64   = 18
 MAX_TYPE      = 18
 
 
+INT_TYPES = [
+    TYPE_FIXED32,
+    TYPE_FIXED64,
+    TYPE_SFIXED32,
+    TYPE_SFIXED64,
+    TYPE_INT32,
+    TYPE_INT64,
+    TYPE_SINT32,
+    TYPE_SINT64,
+    TYPE_UINT32,
+    TYPE_UINT64,
+]
+
 class ProtoInfo(object):
     def __init__(self, package=None, struct=None, path=None):
         self.package = package if package else "trck"
@@ -106,8 +119,8 @@ def validate_counters(program, fields):
         if name not in fields:
             raise ValueError("{} fixed64 must be defined in proto file".format(name))
         field_type, field_label = fields[name]
-        if field_type != TYPE_FIXED64:
-            raise ValueError("{} must be fixed64 type since it is a counter".format(name))
+        if field_type not in INT_TYPES:
+            raise ValueError("{} must be int type since it is a counter".format(name))
         if field_label == LABEL_REPEATED:
             raise ValueError("{} must not be repeated since it is a counter".format(name))
 
