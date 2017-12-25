@@ -1,13 +1,16 @@
-syntax = "proto2";
+syntax = "proto3";
 
 import "Tuple.proto";
+import "Hll.proto";
 
 package trck;
 
 message Result {
-	optional string scalar_a = 1;
-	optional string scalar_b = 2;
-	repeated string set_x = 3;
-	optional fixed64 counter_y = 4;
-	repeated trck.Tuple set_z = 5;
+	string scalar_a = 1;
+	string scalar_b = 2;
+	repeated trck.Tuple multiset_w = 3;
+	trck.Hll hll_v = 4;
+	repeated string set_x = 5;
+	uint64 counter_y = 6;
+	repeated trck.Tuple set_z = 7;
 }
