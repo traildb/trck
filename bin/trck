@@ -220,7 +220,8 @@ def main():
                             "--proto_path={}".format(os.path.dirname(proto_info.path)),
                             # Compile the following proto files and place them into gen_path
                             os.path.basename(proto_info.path),
-                            "Tuple.proto",
+                            "SetTuple.proto",
+                            "MultisetTuple.proto",
                             "Hll.proto",
                         ])
                         proto_info.validate_fields(gen_path, program)
@@ -240,7 +241,8 @@ def main():
                 if args.proto:
                     sources += [
                         j(gen_path, proto_info.pb_src(basename=True)),
-                        j(gen_path, "Tuple.pb-c.c"),
+                        j(gen_path, "SetTuple.pb-c.c"),
+                        j(gen_path, "MultisetTuple.pb-c.c"),
                         j(gen_path, "Hll.pb-c.c"),
                     ]
 

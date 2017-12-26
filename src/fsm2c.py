@@ -1059,7 +1059,8 @@ def gen_prologue_proto(g, program, proto_info, includes):
     g.o("#endif")
     g.o("#define MAXLINELEN 1000000")
 
-    g.o("const static Trck__Tuple TRCK_TUPLE_DEFAULT = TRCK__TUPLE__INIT;")
+    g.o("const static Trck__SetTuple TRCK_SET_TUPLE_DEFAULT = TRCK__SET_TUPLE__INIT;")
+    g.o("const static Trck__MultisetTuple TRCK_MULTISET_TUPLE_DEFAULT = TRCK__MULTISET_TUPLE__INIT;")
     g.o("const static Trck__Hll TRCK_HLL_DEFAULT = TRCK__HLL__INIT;")
 
     g.o("const int protobuf_enabled = 1;")
@@ -1072,34 +1073,6 @@ def gen_proto_add_int(g, program, proto_info):
             counter = ph.proto_counter(yield_counter)
             with BRACES(g, "if (!strcmp(name, \"{}\"))".format(yield_counter)):
                 g.o("msg->{} = value;".format(counter))
-
-
-def gen_yield_string(g, set_name):
-    """
-    yielding a string to a set
-    """
-    g.o("tail = string_tuple_extract_head(tail, sizeof(buf), (uint8_t *)buf, &res_len, &res_type);")
-    g.o("buf[res_len] = '\\0';")
-    g.co("msg->{set}[i] = malloc(sizeof(char) * (res_len + 1));")
-    g.co("strncpy(msg->{set}[i], buf, res_len + 1);")
-
-
-def gen_yield_tuple(g, set_name):
-    """
-    yielding a tuple to a set
-    """
-    g.co("msg->{set}[i] = malloc(sizeof(Trck__Tuple));")
-    g.co("*(msg->{set}[i]) = TRCK_TUPLE_DEFAULT;")
-    g.o("int size = string_tuple_size(tail);")
-    g.co("msg->{set}[i]->values = malloc(size * sizeof(char *));")
-    g.co("msg->{set}[i]->n_values = size;")
-    g.o("int j = 0;")
-    with BRACES(g, "while(!string_tuple_is_empty(tail))"):
-        g.o("tail = string_tuple_extract_head(tail, sizeof(buf), (uint8_t *)buf, &res_len, &res_type);")
-        g.o("buf[res_len] = '\\0';")
-        g.co("msg->{set}[i]->values[j] = malloc(sizeof(char) * (res_len + 1));")
-        g.co("strncpy(msg->{set}[i]->values[j], buf, res_len + 1);")
-        g.o("j++;")
 
 
 def gen_proto_add_set(g, program, proto_info):
@@ -1122,11 +1095,18 @@ def gen_proto_add_set(g, program, proto_info):
                     g.o("char *tail = (char*) index;")
                     g.o("int res_len;")
                     g.o("int res_type;")
-                    yield_names = program.get_yield_names('#' + yield_set)
-                    if len(yield_names) == 1:
-                        gen_yield_string(g, set_name)
-                    else:
-                        gen_yield_tuple(g, set_name)
+                    g.co("msg->{set}[i] = malloc(sizeof(Trck__SetTuple));")
+                    g.co("*(msg->{set}[i]) = TRCK_SET_TUPLE_DEFAULT;")
+                    g.o("int size = string_tuple_size(tail);")
+                    g.co("msg->{set}[i]->values = malloc(size * sizeof(char *));")
+                    g.co("msg->{set}[i]->n_values = size;")
+                    g.o("int j = 0;")
+                    with BRACES(g, "while(!string_tuple_is_empty(tail))"):
+                        g.o("tail = string_tuple_extract_head(tail, sizeof(buf), (uint8_t *)buf, &res_len, &res_type);")
+                        g.o("buf[res_len] = '\\0';")
+                        g.co("msg->{set}[i]->values[j] = malloc(sizeof(char) * (res_len + 1));")
+                        g.co("strncpy(msg->{set}[i]->values[j], buf, res_len + 1);")
+                        g.o("j++;")
 
                     g.o("i++;")
                     g.o("JSLN(pv, *value, index);")

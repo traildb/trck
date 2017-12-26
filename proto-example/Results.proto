@@ -1,6 +1,7 @@
 syntax = "proto3";
 
-import "Tuple.proto";
+import "MultisetTuple.proto";
+import "SetTuple.proto";
 import "Hll.proto";
 
 package trck;
@@ -8,9 +9,9 @@ package trck;
 message Result {
 	string scalar_a = 1;
 	string scalar_b = 2;
-	repeated trck.Tuple multiset_w = 3;
+	repeated trck.MultisetTuple multiset_w = 3;
 	trck.Hll hll_v = 4;
-	repeated string set_x = 5;
+	repeated trck.SetTuple set_x = 5;
 	uint64 counter_y = 6;
-	repeated trck.Tuple set_z = 7;
+	repeated trck.SetTuple set_z = 7;
 }

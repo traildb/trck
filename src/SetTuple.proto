@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package trck;
+
+message SetTuple {
+  repeated string values = 1;
+}

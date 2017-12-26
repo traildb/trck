@@ -16,7 +16,7 @@ bin/trck -c proto-example/example.tr -o matcher \
 # Generate python stubs so we can dump the results
 protoc --python_out=proto-example \
     --proto_path=src \
-    --proto_path=proto-example Results.proto Tuple.proto Hll.proto
+    --proto_path=proto-example Results.proto SetTuple.proto MultisetTuple.proto Hll.proto
 
 # Dump the results
 python proto-example/test.py --dump proto-example/results.msg

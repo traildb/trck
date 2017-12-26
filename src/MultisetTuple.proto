@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package trck;
 
-message Tuple {
+message MultisetTuple {
   repeated string values = 1;
+  uint64 count = 2;
 }
