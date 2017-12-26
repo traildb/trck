@@ -1114,7 +1114,40 @@ def gen_proto_add_set(g, program, proto_info):
 
 def gen_proto_add_multiset(g, program, proto_info):
     with BRACES(g, "void proto_add_multiset(void *p, char *name, set_t *value)"):
-        pass
+        g.o("{struct} *msg = ({struct} *) p;".format(struct=proto_info.to_struct()))
+        for yield_multiset in program.yield_multisets:
+            set_name = ph.proto_multiset(yield_multiset)
+            with BRACES(g, "if (!strcmp(name, \"&{}\"))".format(yield_multiset), set=set_name):
+                g.co("msg->n_{set} = JSL_size(value);")
+                g.co("msg->{set} = malloc(msg->n_{set} * sizeof(void *));")
+
+                g.o("int i = 0;")
+                g.o("uint8_t index[MAXLINELEN];")
+                g.o("index[0] = '\\0';")
+                g.o("Word_t *pv;")
+                g.o("JSLF(pv, *value, index);")
+                with BRACES(g, "while(pv)"):
+                    g.o("char buf[1024];")
+                    g.o("char *tail = (char*) index;")
+                    g.o("int res_len;")
+                    g.o("int res_type;")
+
+                    g.co("msg->{set}[i] = malloc(sizeof(Trck__MultisetTuple));")
+                    g.co("*(msg->{set}[i]) = TRCK_MULTISET_TUPLE_DEFAULT;")
+                    g.o("int size = string_tuple_size(tail);")
+                    g.co("msg->{set}[i]->values = malloc(size * sizeof(char *));")
+                    g.co("msg->{set}[i]->n_values = size;")
+                    g.co("msg->{set}[i]->count = *pv;")
+                    g.o("int j = 0;")
+                    with BRACES(g, "while(!string_tuple_is_empty(tail))"):
+                        g.o("tail = string_tuple_extract_head(tail, sizeof(buf), (uint8_t *)buf, &res_len, &res_type);")
+                        g.o("buf[res_len] = '\\0';")
+                        g.co("msg->{set}[i]->values[j] = malloc(sizeof(char) * (res_len + 1));")
+                        g.co("strncpy(msg->{set}[i]->values[j], buf, res_len + 1);")
+                        g.o("j++;")
+
+                    g.o("i++;")
+                    g.o("JSLN(pv, *value, index);")
 
 
 def gen_proto_add_hll(g, program, proto_info):
