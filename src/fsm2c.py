@@ -1155,20 +1155,20 @@ def gen_proto_add_hll(g, program, proto_info):
         g.o("{struct} *msg = ({struct} *) p;".format(struct=proto_info.to_struct()))
         for yield_hll in program.yield_hlls:
             hll = ph.proto_hll(yield_hll)
-            g.push_context("hll", hll)
-            g.co("msg->{hll} = malloc(sizeof(Trck__Hll));")
-            g.co("*msg->{hll} = TRCK_HLL_DEFAULT;")
-            with BRACES(g, "if (value)"):
-                g.co("msg->{hll}->precision = value->p;")
-                g.co("msg->{hll}->empty = 0;")
-                g.o("const char * encodedHll = hll_to_string(value);")
-                g.co("msg->{hll}->bins.data = (uint8_t*) encodedHll + 4;")
-                g.co("msg->{hll}->bins.len = strlen(encodedHll) - 4;")
-            with BRACES(g, "else"):
-                g.co("msg->{hll}->precision = 14;")
-                g.co("msg->{hll}->empty = 1;")
-                g.co("msg->{hll}->bins.data = 0;")
-                g.co("msg->{hll}->bins.len = 0;")
+            with BRACES(g, "if (!strcmp(name, \"^{}\"))".format(yield_hll), hll=hll):
+                g.co("msg->{hll} = malloc(sizeof(Trck__Hll));")
+                g.co("*msg->{hll} = TRCK_HLL_DEFAULT;")
+                with BRACES(g, "if (value)"):
+                    g.co("msg->{hll}->precision = value->p;")
+                    g.co("msg->{hll}->empty = 0;")
+                    g.o("const char * encodedHll = hll_to_string(value);")
+                    g.co("msg->{hll}->bins.data = (uint8_t*) encodedHll + 4;")
+                    g.co("msg->{hll}->bins.len = strlen(encodedHll) - 4;")
+                with BRACES(g, "else"):
+                    g.co("msg->{hll}->precision = 14;")
+                    g.co("msg->{hll}->empty = 1;")
+                    g.co("msg->{hll}->bins.data = 0;")
+                    g.co("msg->{hll}->bins.len = 0;")
 
 
 def gen_output_groupby_result_proto(g, program, proto_info):
