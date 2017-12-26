@@ -22,8 +22,10 @@ protoc --python_out=proto-example \
 python proto-example/test.py --dump proto-example/results.msg
 """
 import argparse
-import struct
 import fileinput
+import importlib
+import os
+import struct
 import sys
 import traildb
 from uuid import uuid4
@@ -103,13 +105,39 @@ def format_hll(hll):
 		return "{}: {}".format(hll.precision, hll.bins)
 
 
+def format_tuple(tup):
+	return "({})".format(",".join(i for i in tup.values))
+
+
+def format_set(s):
+	return "{{{}}}".format(", ".join(format_tuple(i) for i in s))
+
+
+def format_multi_tuple(tup):
+	return "{}: {}".format(format_tuple(tup), tup.count)
+
+
+def format_multiset(s):
+	return "{{{}}}".format(", ".join(format_multi_tuple(i) for i in s))
+
+
+def update_bindings():
+	os.system("""
+	protoc --python_out=proto-example \
+	--proto_path=src \
+	--proto_path=proto-example Results.proto SetTuple.proto MultisetTuple.proto Hll.proto
+	""")
+	return importlib.import_module("Results_pb2")
+
+
 def dump(name):
-	import Results_pb2
+	Results_pb2 = update_bindings()
 	with open(name, "rb") as f:
 		for row in stream_results(f, Results_pb2.Result):
-			print("a={} b={} v={}".format(
+			print("a={} b={} w={} v={}".format(
 				row.scalar_a,
 				row.scalar_b,
+				format_multiset(row.multiset_w),
 				format_hll(row.hll_v),
 			))
 
