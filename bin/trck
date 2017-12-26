@@ -221,6 +221,7 @@ def main():
                             # Compile the following proto files and place them into gen_path
                             os.path.basename(proto_info.path),
                             "Tuple.proto",
+                            "Hll.proto",
                         ])
                         proto_info.validate_fields(gen_path, program)
 
@@ -240,6 +241,7 @@ def main():
                     sources += [
                         j(gen_path, proto_info.pb_src(basename=True)),
                         j(gen_path, "Tuple.pb-c.c"),
+                        j(gen_path, "Hll.pb-c.c"),
                     ]
 
                 if args.static:

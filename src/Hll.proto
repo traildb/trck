@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package trck;
+
+message Hll {
+	uint32 precision = 1;
+	bool empty = 2;
+	bytes bins = 3;
+}

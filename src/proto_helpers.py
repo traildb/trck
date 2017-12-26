@@ -184,6 +184,18 @@ def proto_set(name):
     return "set_{}".format(name).lower()
 
 
+def proto_multiset(name):
+    if name[0] == '&':
+        name = name[1:]
+    return "multiset_{}".format(name).lower()
+
+
+def proto_hll(name):
+    if name[0] == '^':
+        name = name[1:]
+    return "hll_{}".format(name).lower()
+
+
 def descriptor_fields(desc):
     fields = {}
     for field in desc.fields:

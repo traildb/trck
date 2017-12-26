@@ -16,7 +16,7 @@ bin/trck -c proto-example/example.tr -o matcher \
 # Generate python stubs so we can dump the results
 protoc --python_out=proto-example \
     --proto_path=src \
-    --proto_path=proto-example Results.proto Tuple.proto
+    --proto_path=proto-example Results.proto Tuple.proto Hll.proto
 
 # Dump the results
 python proto-example/test.py --dump proto-example/results.msg
@@ -84,6 +84,7 @@ def read_msgs(fobj):
 	length = fobj.read(8)
 	while length != "":
 		n = parse_long(length)
+		assert n < 4096, "msg seems unreasonably long n={}".format(n)
 		yield fobj.read(n)
 		length = fobj.read(8)
 
@@ -95,16 +96,21 @@ def stream_results(fobj, cls):
 		yield res
 
 
+def format_hll(hll):
+	if hll.empty:
+		return ""
+	else:
+		return "{}: {}".format(hll.precision, hll.bins)
+
+
 def dump(name):
 	import Results_pb2
 	with open(name, "rb") as f:
 		for row in stream_results(f, Results_pb2.Result):
-			print("a={} b={} y={} x={} z={}".format(
+			print("a={} b={} v={}".format(
 				row.scalar_a,
 				row.scalar_b,
-				row.counter_y,
-				list(row.set_x),
-				[z.values for z in row.set_z],
+				format_hll(row.hll_v),
 			))
 
 

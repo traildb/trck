@@ -9,23 +9,24 @@ import proto_helpers as ph
 EXPIRES_NEVER = 'UINT64_MAX'
 
 
-class BRACES:
-    def __init__(self, gen, head=None):
+class BRACES(object):
+    def __init__(self, gen, head=None, **context):
         self.gen = gen
         self.head = head
+        self.context = context
 
     def __enter__(self):
         if self.head:
             self.gen.o(self.head)
         self.gen.o("{")
-        self.gen.indent()
+        self.gen.indent(self.context)
 
     def __exit__(self, type, value, tb):
         self.gen.dedent()
         self.gen.o("}")
 
 
-class DEBUG:
+class DEBUG(object):
     def __init__(self, gen):
         self.gen = gen
 
@@ -36,21 +37,49 @@ class DEBUG:
         self.gen.o("#endif")
 
 
-class Gen:
+class Gen(object):
     def __init__(self, outfile):
         self.outfile = outfile
         self.indent_level = 0
+        self.context = [{}]
 
-    def o(self, s):
-        line = "{indent}{code}\n".format(indent=" " * 4 * self.indent_level,
-                                         code=s)
+    def co(self, code):
+        """
+        Like self.o but formats the current context into code
+        """
+
+        # Combine all frames of context into a single dictionary
+        # overwriting kv pairs from lower frames
+        flattened_context = {}
+        for frame in self.context:
+            flattened_context.update(frame)
+
+        code = code.format(**flattened_context)
+        self.o(code)
+
+    def o(self, code):
+        line = "{indent}{code}\n".format(
+            indent=" " * 4 * self.indent_level,
+            code=code)
         self.outfile.write(line)
 
-    def indent(self):
+    def indent(self, context):
         self.indent_level += 1
+        # Add new frame to be deleted
+        # when exiting current block
+        self.context.append(context)
 
     def dedent(self):
         self.indent_level -= 1
+        # Delete top level frame
+        self.context.pop()
+
+    def push_context(self, key, var):
+        """
+        Add kv pair to topmost frame
+        """
+        self.context[-1][key] = var
+
 
 
 def escape_var_name(n):
@@ -1016,6 +1045,7 @@ def gen_prologue_proto(g, program, proto_info, includes):
 #include "foreach_util.h"
 #include "utils.h"
 #include "safeio.h"
+#include "hyperloglog.h"
 #include "results_protobuf.h"
 """)
 
@@ -1030,6 +1060,7 @@ def gen_prologue_proto(g, program, proto_info, includes):
     g.o("#define MAXLINELEN 1000000")
 
     g.o("const static Trck__Tuple TRCK_TUPLE_DEFAULT = TRCK__TUPLE__INIT;")
+    g.o("const static Trck__Hll TRCK_HLL_DEFAULT = TRCK__HLL__INIT;")
 
     g.o("const int protobuf_enabled = 1;")
 
@@ -1043,14 +1074,42 @@ def gen_proto_add_int(g, program, proto_info):
                 g.o("msg->{} = value;".format(counter))
 
 
+def gen_yield_string(g, set_name):
+    """
+    yielding a string to a set
+    """
+    g.o("tail = string_tuple_extract_head(tail, sizeof(buf), (uint8_t *)buf, &res_len, &res_type);")
+    g.o("buf[res_len] = '\\0';")
+    g.co("msg->{set}[i] = malloc(sizeof(char) * (res_len + 1));")
+    g.co("strncpy(msg->{set}[i], buf, res_len + 1);")
+
+
+def gen_yield_tuple(g, set_name):
+    """
+    yielding a tuple to a set
+    """
+    g.co("msg->{set}[i] = malloc(sizeof(Trck__Tuple));")
+    g.co("*(msg->{set}[i]) = TRCK_TUPLE_DEFAULT;")
+    g.o("int size = string_tuple_size(tail);")
+    g.co("msg->{set}[i]->values = malloc(size * sizeof(char *));")
+    g.co("msg->{set}[i]->n_values = size;")
+    g.o("int j = 0;")
+    with BRACES(g, "while(!string_tuple_is_empty(tail))"):
+        g.o("tail = string_tuple_extract_head(tail, sizeof(buf), (uint8_t *)buf, &res_len, &res_type);")
+        g.o("buf[res_len] = '\\0';")
+        g.co("msg->{set}[i]->values[j] = malloc(sizeof(char) * (res_len + 1));")
+        g.co("strncpy(msg->{set}[i]->values[j], buf, res_len + 1);")
+        g.o("j++;")
+
+
 def gen_proto_add_set(g, program, proto_info):
     with BRACES(g, "void proto_add_set(void *p, char *name, set_t *value)"):
         g.o("{struct} *msg = ({struct} *) p;".format(struct=proto_info.to_struct()))
         for yield_set in program.yield_sets:
             set_name = ph.proto_set(yield_set)
-            with BRACES(g, "if (!strcmp(name, \"#{}\"))".format(yield_set)):
-                g.o("msg->n_{set} = JSL_size(value);".format(set=set_name))
-                g.o("msg->{set} = malloc(msg->n_{set} * sizeof(void *));".format(set=set_name))
+            with BRACES(g, "if (!strcmp(name, \"#{}\"))".format(yield_set), set=set_name):
+                g.co("msg->n_{set} = JSL_size(value);")
+                g.co("msg->{set} = malloc(msg->n_{set} * sizeof(void *));")
 
                 g.o("int i = 0;")
                 g.o("uint8_t index[MAXLINELEN];")
@@ -1065,31 +1124,9 @@ def gen_proto_add_set(g, program, proto_info):
                     g.o("int res_type;")
                     yield_names = program.get_yield_names('#' + yield_set)
                     if len(yield_names) == 1:
-                        # yielding a string
-                        g.o("tail = string_tuple_extract_head(tail, sizeof(buf), (uint8_t *)buf, &res_len, &res_type);")
-                        g.o("buf[res_len] = '\\0';")
-                        g.o("msg->{set}[i] = malloc(sizeof(char) * (res_len + 1));".format(set=set_name))
-                        g.o("strncpy(msg->{set}[i], buf, res_len + 1);".format(set=set_name))
+                        gen_yield_string(g, set_name)
                     else:
-                        # yielding a tuple
-                        g.o("msg->{set}[i] = malloc(sizeof({struct}));".format(
-                            set=set_name,
-                            struct="Trck__Tuple"))
-                        g.o("*(msg->{set}[i]) = {default};".format(
-                            set=set_name,
-                            default="TRCK_TUPLE_DEFAULT"))
-                        g.o("int size = string_tuple_size(tail);")
-                        g.o("msg->{set}[i]->values = malloc(size * sizeof(char *));".format(set=set_name))
-                        g.o("msg->{set}[i]->n_values = size;".format(set=set_name))
-                        g.o("int j = 0;")
-                        with BRACES(g, "while(!string_tuple_is_empty(tail))"):
-                            g.o("tail = string_tuple_extract_head(tail, sizeof(buf), (uint8_t *)buf, &res_len, &res_type);")
-                            g.o("buf[res_len] = '\\0';")
-                            g.o("msg->{set}[i]->values[j] = malloc(sizeof(char) * (res_len + 1));".format(
-                                set=set_name))
-                            g.o("strncpy(msg->{set}[i]->values[j], buf, res_len + 1);".format(
-                                set=set_name))
-                            g.o("j++;")
+                        gen_yield_tuple(g, set_name)
 
                     g.o("i++;")
                     g.o("JSLN(pv, *value, index);")
@@ -1102,7 +1139,23 @@ def gen_proto_add_multiset(g, program, proto_info):
 
 def gen_proto_add_hll(g, program, proto_info):
     with BRACES(g, "void proto_add_hll(void *p, char *name, hyperloglog_t *value)"):
-        pass
+        g.o("{struct} *msg = ({struct} *) p;".format(struct=proto_info.to_struct()))
+        for yield_hll in program.yield_hlls:
+            hll = ph.proto_hll(yield_hll)
+            g.push_context("hll", hll)
+            g.co("msg->{hll} = malloc(sizeof(Trck__Hll));")
+            g.co("*msg->{hll} = TRCK_HLL_DEFAULT;")
+            with BRACES(g, "if (value)"):
+                g.co("msg->{hll}->precision = value->p;")
+                g.co("msg->{hll}->empty = 0;")
+                g.o("const char * encodedHll = hll_to_string(value);")
+                g.co("msg->{hll}->bins.data = (uint8_t*) encodedHll + 4;")
+                g.co("msg->{hll}->bins.len = strlen(encodedHll) - 4;")
+            with BRACES(g, "else"):
+                g.co("msg->{hll}->precision = 14;")
+                g.co("msg->{hll}->empty = 1;")
+                g.co("msg->{hll}->bins.data = 0;")
+                g.co("msg->{hll}->bins.len = 0;")
 
 
 def gen_output_groupby_result_proto(g, program, proto_info):
@@ -1113,17 +1166,13 @@ def gen_output_groupby_result_proto(g, program, proto_info):
         g.o("string_val_t *tuple = &gi->tuples[i * gi->num_vars];")
         g.o("results_t *pres = (results_t *)((uint8_t *)results + match_get_result_size() * i);")
 
-        for i, param in enumerate(program.groupby['vars']):
+        for index, param in enumerate(program.groupby['vars']):
             param_name = ph.proto_scalar(param)
-            g.o("msg.{param_name} = malloc(sizeof(char) * (tuple[{index}].len + 1));".format(
-                param_name=param_name,
-                index=i))
-            g.o("strncpy(msg.{param_name}, tuple[{index}].str, (tuple[{index}].len + 1));".format(
-                param_name=param_name,
-                index=i))
-            g.o("msg.{param_name}[tuple[{index}].len] = '\\0';".format(
-                param_name=param_name,
-                index=i))
+            g.push_context("param_name", param_name)
+            g.push_context("index", index)
+            g.co("msg.{param_name} = malloc(sizeof(char) * (tuple[{index}].len + 1));")
+            g.co("strncpy(msg.{param_name}, tuple[{index}].str, tuple[{index}].len);")
+            g.co("msg.{param_name}[tuple[{index}].len] = '\\0';")
 
         g.o("match_save_result(" \
             "pres, " \
