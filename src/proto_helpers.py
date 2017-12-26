@@ -128,25 +128,14 @@ def validate_counters(program, fields):
 def validate_sets(program, fields):
     for yield_set in program.yield_sets:
         name = proto_set(yield_set)
-        yield_names = program.get_yield_names("#{}".format(yield_set))
-        if len(yield_names) == 1:
-            # Expect a repeated string type
-            if name not in fields:
-                raise ValueError("{} repeated string must be defined in proto file".format(name))
-            field_type, field_label = fields[name]
-            if field_type != TYPE_STRING:
-                raise ValueError("{} must be a repeated string since it is a set".format(name))
-            if field_label != LABEL_REPEATED:
-                raise ValueError("{} must be repeated since it is a set".format(name))
-        else:
-            # Expect a repeated tuple
-            if name not in fields:
-                raise ValueError("{} repeated tuple must be defined in proto file".format(name))
-            field_type, field_label = fields[name]
-            if field_type != TYPE_MESSAGE:
-                raise ValueError("{} must be a repeated tuple since multiple values are yielded to it".format(name))
-            if field_label != LABEL_REPEATED:
-                raise ValueError("{} must be repeated since it is a set".format(name))
+        # Expect a repeated tuple
+        if name not in fields:
+            raise ValueError("{} repeated Tuple must be defined in proto file".format(name))
+        field_type, field_label = fields[name]
+        if field_type != TYPE_MESSAGE:
+            raise ValueError("{} must be a repeated Tuple since multiple values can be yielded to it".format(name))
+        if field_label != LABEL_REPEATED:
+            raise ValueError("{} must be repeated since it is a set".format(name))
 
 
 def capitalize(x):
