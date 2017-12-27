@@ -494,26 +494,6 @@ class Program:
     def get_rule_window_duration(self, rule_id):
         return self.rules[rule_id].get("window")
 
-    def get_yield_names(self, set_name):
-        """
-        Get's the names of values yielded to set_name
-        Only call this for protobuf programs
-        """
-        sources = [
-            y['src']
-            for rule in self.rules
-            for clause in rule['clauses']
-            if 'yield' in clause
-            for y in clause['yield']
-            if y['dst'] == set_name
-        ]
-        names = {tuple(i['name'] for i in src) for src in sources}
-
-        if len(names) != 1:
-            raise Exception("Yielding to {}. Protobuf programs must yield the same tuple arities for the same set".format(set_name))
-
-        return names.pop()
-
 
 def add_yield_vars(program, yield_list):
     for y in yield_list:
