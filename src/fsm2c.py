@@ -993,6 +993,7 @@ def compile_proto(program, includes, proto_info, out=sys.stdout):
     gen_proto_add_multiset(g, program, proto_info)
     gen_proto_add_hll(g, program, proto_info)
     gen_output_groupby_result_proto(g, program, proto_info)
+    gen_output_single_result_proto(g, program, proto_info)
     gen_output_proto(g, program, proto_info)
 
 
@@ -1203,11 +1204,40 @@ def gen_output_groupby_result_proto(g, program, proto_info):
         g.o("fwrite(buf, len, 1, stdout);")
         g.o("free(buf);")
 
+        for index, param in enumerate(program.groupby['vars']):
+            param_name = ph.proto_scalar(param)
+            g.co("free(msg.{});".format(param_name))
+
+
+def gen_output_single_result_proto(g, program, proto_info):
+    with BRACES(g, "void output_single_result_proto(results_t *results)"):
+        g.o("{struct} msg = {struct_init};".format(
+                struct=proto_info.to_struct(),
+                struct_init=proto_info.to_struct_init()))
+        g.o("match_save_result(" \
+            "results, " \
+            "&msg, " \
+            "proto_add_int, " \
+            "proto_add_set, " \
+            "proto_add_multiset, " \
+            "proto_add_hll);")
+                g.o("unsigned long len = {}(&msg);".format(proto_info.to_get_packed_size()))
+        g.o("void *buf = malloc(len);")
+        g.o("{}(&msg, buf);".format(proto_info.to_pack()))
+
+        g.o("fwrite(&len, sizeof(unsigned long), 1, stdout);")
+        g.o("fwrite(buf, len, 1, stdout);")
+        g.o("free(buf);")
+
 
 def gen_output_proto(g, program, proto_info):
     with BRACES(g, "void output_proto(groupby_info_t *gi, results_t *results)"):
-        with BRACES(g, "for (int i = 0; i < gi->num_tuples; i++)"):
-            g.o("output_groupby_result_proto(gi, i, results);")
+        with BRACES(g, "if (gi == NULL || gi->num_vars == 0 || gi->merge_results)"):
+            g.o("output_single_result_proto(results);")
+
+        with BRACES(g, "else"):
+            with BRACES(g, "for (int i = 0; i < gi->num_tuples; i++)"):
+                g.o("output_groupby_result_proto(gi, i, results);")
 
 
 if __name__ == '__main__':
