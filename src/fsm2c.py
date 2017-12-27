@@ -1,5 +1,6 @@
 import re
 import sys
+import textwrap
 import json
 import hashlib
 
@@ -79,7 +80,6 @@ class Gen(object):
         Add kv pair to topmost frame
         """
         self.context[-1][key] = var
-
 
 
 def escape_var_name(n):
@@ -992,6 +992,7 @@ def compile_proto(program, includes, proto_info, out=sys.stdout):
     gen_proto_add_set(g, program, proto_info)
     gen_proto_add_multiset(g, program, proto_info)
     gen_proto_add_hll(g, program, proto_info)
+    gen_output_msg_proto(g, program, proto_info)
     gen_output_groupby_result_proto(g, program, proto_info)
     gen_output_single_result_proto(g, program, proto_info)
     gen_output_proto(g, program, proto_info)
@@ -1034,21 +1035,21 @@ def gen_header(program, groupby, out=sys.stdout):
 
 
 def gen_prologue_proto(g, program, proto_info, includes):
-    g.o("""
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <Judy.h>
-#include <traildb.h>
-#include "fns_generated.h"
-#include "foreach_util.h"
-#include "utils.h"
-#include "safeio.h"
-#include "hyperloglog.h"
-#include "results_protobuf.h"
-""")
+    g.o(textwrap.dedent("""
+        #include <stdint.h>
+        #include <stdbool.h>
+        #include <string.h>
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <Judy.h>
+        #include <traildb.h>
+        #include "fns_generated.h"
+        #include "foreach_util.h"
+        #include "utils.h"
+        #include "safeio.h"
+        #include "hyperloglog.h"
+        #include "results_protobuf.h"
+        """))
 
     for i in includes:
         g.o("#include \"{}\"".format(i))
@@ -1172,6 +1173,17 @@ def gen_proto_add_hll(g, program, proto_info):
                     g.co("msg->{hll}->bins.len = 0;")
 
 
+def gen_output_msg_proto(g, program, proto_info):
+    with BRACES(g, "void output_msg_proto({struct} *msg)".format(
+        struct=proto_info.to_struct())):
+        g.o("unsigned long len = {}(msg);".format(proto_info.to_get_packed_size()))
+        g.o("void *buf = malloc(len);")
+        g.o("{}(msg, buf);".format(proto_info.to_pack()))
+        g.o("fwrite(&len, sizeof(unsigned long), 1, stdout);")
+        g.o("fwrite(buf, len, 1, stdout);")
+        g.o("free(buf);")
+
+
 def gen_output_groupby_result_proto(g, program, proto_info):
     with BRACES(g, "void output_groupby_result_proto(groupby_info_t *gi, int i, results_t *results)"):
         g.o("{struct} msg = {struct_init};".format(
@@ -1196,13 +1208,7 @@ def gen_output_groupby_result_proto(g, program, proto_info):
             "proto_add_multiset, " \
             "proto_add_hll);")
 
-        g.o("unsigned long len = {}(&msg);".format(proto_info.to_get_packed_size()))
-        g.o("void *buf = malloc(len);")
-        g.o("{}(&msg, buf);".format(proto_info.to_pack()))
-
-        g.o("fwrite(&len, sizeof(unsigned long), 1, stdout);")
-        g.o("fwrite(buf, len, 1, stdout);")
-        g.o("free(buf);")
+        g.o("output_msg_proto(&msg);")
 
         for index, param in enumerate(program.groupby['vars']):
             param_name = ph.proto_scalar(param)
@@ -1221,13 +1227,8 @@ def gen_output_single_result_proto(g, program, proto_info):
             "proto_add_set, " \
             "proto_add_multiset, " \
             "proto_add_hll);")
-                g.o("unsigned long len = {}(&msg);".format(proto_info.to_get_packed_size()))
-        g.o("void *buf = malloc(len);")
-        g.o("{}(&msg, buf);".format(proto_info.to_pack()))
 
-        g.o("fwrite(&len, sizeof(unsigned long), 1, stdout);")
-        g.o("fwrite(buf, len, 1, stdout);")
-        g.o("free(buf);")
+        g.o("output_msg_proto(&msg);")
 
 
 def gen_output_proto(g, program, proto_info):
