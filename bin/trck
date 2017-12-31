@@ -141,6 +141,7 @@ def main():
     parser.add_argument("--params-file", "-p", help="path to parameter file")
     parser.add_argument('--library', '-l', action='append', help="additional library to link to", default=[])
     parser.add_argument("--proto", help="Path to proto file for results")
+    parser.add_argument("--no-validate-proto", help="Don't validate protobuf message against trck script", action='store_true', default=False)
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--dynamic", action="store_true", help="link dependencies dynamically (default)")
@@ -212,10 +213,12 @@ def main():
                                 proto_info=proto_info,
                                 out=proto_src)
 
-                        subprocess.call([
+                        subprocess.call([i for i in [
                             "protoc",
                             "--c_out={}".format(gen_path),
-                            "--python_out={}".format(gen_path),
+                            # Generate the python stubs so we can dynamically
+                            # import the field descriptors for field validation
+                            None if args.no_validate_proto else "--python_out={}".format(gen_path),
                             "--proto_path={}".format(src_path),
                             "--proto_path={}".format(os.path.dirname(proto_info.path)),
                             # Compile the following proto files and place them into gen_path
@@ -223,8 +226,10 @@ def main():
                             "SetTuple.proto",
                             "MultisetTuple.proto",
                             "Hll.proto",
-                        ])
-                        proto_info.validate_fields(gen_path, program)
+                        ] if i is not None])
+
+                        if not args.no_validate_proto:
+                            proto_info.validate_fields(gen_path, program)
 
                 with open(os.path.join(gen_path, 'out_traildb.h'), 'w') as h_src:
                     fsm2c.gen_header(program,
@@ -236,6 +241,8 @@ def main():
                         j(src_path, "match_traildb.c"),
                         j(src_path, "statevec.c"),
                         j(gen_path, "out_traildb.c"),
+                        # If args.proto is None, use src/results_protobuf.c
+                        # (Stub implementation) to prevent linker error
                         j(gen_path if args.proto else src_path, "results_protobuf.c"),
                 ]
                 if args.proto:
