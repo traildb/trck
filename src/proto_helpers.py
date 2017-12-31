@@ -99,6 +99,8 @@ class ProtoInfo(object):
         validate_scalars(program, fields)
         validate_counters(program, fields)
         validate_sets(program, fields)
+        validate_multisets(program, fields)
+        validate_hll(program, fields)
 
 
 def validate_scalars(program, fields):
@@ -106,7 +108,7 @@ def validate_scalars(program, fields):
         name = proto_scalar(scalar)
         if name not in fields:
             raise ValueError("{} string must be defined in proto file".format(name))
-        field_type, field_label = fields[name]
+        field_type, field_label, field_msg_name = fields[name]
         if field_type != TYPE_STRING:
             raise ValueError("{} must be a string".format(name))
         if field_label == LABEL_REPEATED:
@@ -118,7 +120,7 @@ def validate_counters(program, fields):
         name = proto_counter(yield_counter)
         if name not in fields:
             raise ValueError("{} fixed64 must be defined in proto file".format(name))
-        field_type, field_label = fields[name]
+        field_type, field_label, field_msg_name = fields[name]
         if field_type not in INT_TYPES:
             raise ValueError("{} must be int type since it is a counter".format(name))
         if field_label == LABEL_REPEATED:
@@ -130,12 +132,36 @@ def validate_sets(program, fields):
         name = proto_set(yield_set)
         # Expect a repeated tuple
         if name not in fields:
-            raise ValueError("{} repeated Tuple must be defined in proto file".format(name))
-        field_type, field_label = fields[name]
-        if field_type != TYPE_MESSAGE:
-            raise ValueError("{} must be a repeated Tuple since multiple values can be yielded to it".format(name))
+            raise ValueError("{} repeated trck.SetTuple must be defined in proto file".format(name))
+        field_type, field_label, field_msg_name = fields[name]
+        if field_type != TYPE_MESSAGE or field_msg_name != 'trck.SetTuple':
+            raise ValueError("{} must be a repeated trck.SetTuple since multiple values can be yielded to it".format(name))
         if field_label != LABEL_REPEATED:
             raise ValueError("{} must be repeated since it is a set".format(name))
+
+
+def validate_multisets(program, fields):
+    for yield_multiset in program.yield_multisets:
+        name = proto_multiset(yield_multiset)
+        if name not in fields:
+            raise ValueError("{} repeated trck.MultisetTuple must be defined in proto file".format(name))
+        field_type, field_label, field_msg_name = fields[name]
+        if field_type != TYPE_MESSAGE or field_msg_name != 'trck.MultisetTuple':
+            raise ValueError("{} must be a repeated trck.MultisetTuple since multiple values can be yielded to it".format(name))
+        if field_label != LABEL_REPEATED:
+            raise ValueError("{} must be repeated since it is a set".format(name))
+
+
+def validate_hll(program, fields):
+    for yield_hll in program.yield_hlls:
+        name = proto_hll(yield_hll)
+        if name not in fields:
+            raise ValueError("{} trck.Hll must be defined in proto file".format(name))
+        field_type, field_label, field_msg_name = fields[name]
+        if field_type != TYPE_MESSAGE or field_msg_name != 'trck.Hll':
+            raise ValueError("{} must be a trck.Hll since multiple values can be yielded to it".format(name))
+        if field_label == LABEL_REPEATED:
+            raise ValueError("{} must not be repeated".format(name))
 
 
 def capitalize(x):
@@ -188,7 +214,12 @@ def proto_hll(name):
 def descriptor_fields(desc):
     fields = {}
     for field in desc.fields:
-        fields[field.name] = (field.type, field.label)
+        msg_type = desc.fields_by_name.get(field.name)
+        if msg_type and msg_type.message_type:
+            fields[field.name] = (field.type, field.label, msg_type.message_type.full_name)
+        else:
+            fields[field.name] = (field.type, field.label, None)
+
     return fields
 
 
