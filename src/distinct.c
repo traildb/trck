@@ -27,7 +27,7 @@ void distinct_vals_get_multi(ctx_t *ctx, int num_fields,
         int rc;
         int field_id = field_ids[i];
 
-        if (!vti_index_have_field(id_map, field_id))
+        if (field_id == -1 || !vti_index_have_field(id_map, field_id))
             continue;
 
         ctx_reset_position(ctx);

@@ -1,0 +1,31 @@
+foreach %aeid,%tag in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid -> yield $match, yield tu_concat(%aeid,%tag) to &trails
+            * -> repeat
+
+
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "desc" : "You can pass parameters that do not correspond to any fields and use them in yield inside a function call",
+--         "trails" : [{"abcd" : [
+--                      {"type":"cli", "timestamp":0,   "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":100, "advertisable_eid" : "a1"},
+--                      {"type":"cli", "timestamp":200, "advertisable_eid" : "a2"},
+--                      {"type":"cli", "timestamp":300, "advertisable_eid" : "a2"},
+--                      {"type":"cli", "timestamp":400, "advertisable_eid" : "a3"},
+--                      {"type":"cli", "timestamp":500, "advertisable_eid" : "a2"},
+--                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a3"},
+--                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a2"}
+--                    ]}],
+--         "expected" : [
+--                      {"%aeid" : "a1", "%tag" : "t1", "$match" : 2, "&trails" : {"a1t1":2}},
+--                      {"%aeid" : "a2", "%tag" : "t2", "$match" : 4, "&trails" : {"a2t2":4}},
+--                      {"%aeid" : "a3", "%tag" : "t3", "$match" : 2, "&trails" : {"a3t3":2}}
+--                     ]
+--     }
+-- ],
+-- "params" : {"@arr" : [["a1", "t1"], ["a2", "t2"], ["a3", "t3"]]}
+-- }

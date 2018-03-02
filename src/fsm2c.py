@@ -1,6 +1,7 @@
 import re
 import sys
 import json
+import hashlib
 
 EXPIRES_NEVER = 'UINT64_MAX'
 
@@ -200,7 +201,7 @@ def enter_rule(g, ri, program):
             g.o("state->window_expires = %s;" % EXPIRES_NEVER)
 
 
-def compile_yield_term(g, term, program, current_rule_id, _val, _len, _type):
+def compile_yield_term(g, term, program, current_rule_id, _val, _pval, _len, _type):
     kind = term.get('_k')
 
     if kind == 'window_ref':
@@ -231,7 +232,6 @@ def compile_yield_term(g, term, program, current_rule_id, _val, _len, _type):
 
         if field_name == 'cookie':
             g.o("ctx_get_cookie(ctx, %(_val)s);" % locals())
-            g.o("""DBG_PRINTF("cookie: '%%.*s'\\n", 32, %(_val)s);""" % locals())
             g.o('%(_len)s = 16;' % locals())
             g.o('%(_type)s = TUPLE_ITEM_TYPE_BYTES;' % locals())
 
@@ -266,20 +266,28 @@ def compile_yield_term(g, term, program, current_rule_id, _val, _len, _type):
             g.o('%(_len)s = strlen(%(_val)s);' % locals())
             g.o('%(_val)s[%(_len)s] = 0; // add 0 after strncpy' % locals())
             g.o('%(_type)s = TUPLE_ITEM_TYPE_STRING;' % locals())
-
+    elif kind == 'param':
+            scalar_name = strip_type(term['name'])
+            with BRACES(g):
+                g.o('%(_len)s = ids->varstrlen_%(scalar_name)s;' % locals())
+                g.o('%(_pval)s = ids->varstr_%(scalar_name)s;' % locals())
+                g.o('%(_type)s = TUPLE_ITEM_TYPE_STRING;' % locals())
     elif kind == 'fcall':
         with BRACES(g):
+            slug = hashlib.sha1(repr(term)).hexdigest()[:6]
             args = [_val, "sizeof(%s)/sizeof(%s[0])" % (_val, _val)]
             for narg, arg in enumerate(term['args']):
-                arg_val = 'arg_%d' % narg
-                arg_len = 'len_%d' % narg
-                arg_type = 'type_%d' % narg
+                arg_val = 'arg_%s_%d' % (slug, narg)
+                arg_buf = 'argbuf_%s_%d' % (slug, narg)
+                arg_len = 'len_%s_%d' % (slug, narg)
+                arg_type = 'type_%s_%d' % (slug, narg)
 
-                g.o("char %s[256] = \"\";" % arg_val)
+                g.o("char %s[256] = \"\";" % arg_buf)
+                g.o("char *%s = %s;" % (arg_val, arg_buf))
                 g.o("int %s = 0;" % arg_len)
-                g.o("int %s = 0;" % arg_type)
+                g.o("int %s __attribute__((unused)) = 0;" % arg_type)
 
-                compile_yield_term(g, arg, program, current_rule_id, arg_val, arg_len, arg_type)
+                compile_yield_term(g, arg, program, current_rule_id, arg_buf, arg_val, arg_len, arg_type)
                 args.append(arg_val)
                 args.append(arg_len)
             g.o('%s = %s(%s);' % (_len, term['name'], ','.join(args)))
@@ -288,7 +296,7 @@ def compile_yield_term(g, term, program, current_rule_id, _val, _len, _type):
 
 def compile_yield(g, c, program, current_rule_id):
     if c.get("yield", None):
-        g.o('DBG_PRINTF("yield %s\\n");' % c['yield'])
+        g.o('DBG_PRINTF("yield %s\\n");' % repr(c['yield']).replace('%', '%%'))
         g.o("ctx_update_stats(ctx, RESULT_UPDATED);")
         for _yield in c['yield']:
             var = _yield['dst']
@@ -303,10 +311,11 @@ def compile_yield(g, c, program, current_rule_id):
                     g.o("item_t i = ctx_get_item(ctx);")
                     for elem in _tuple:
                         with BRACES(g):
-                            g.o("char val[256] = \"\";")
+                            g.o("char buf[256] = \"\";")
+                            g.o("char *val = buf;")
                             g.o("int len = 0;")
                             g.o("int type = 0;")
-                            compile_yield_term(g, elem, program, current_rule_id, 'val', 'len', 'type')
+                            compile_yield_term(g, elem, program, current_rule_id, 'buf', 'val', 'len', 'type')
                             g.o("string_tuple_append(val, len, type, &tuple);")
                     if var_type(var) == 'set':
                         g.o("set_insert(&results->set_%s, &tuple);" % strip_type(var))
@@ -364,22 +373,22 @@ def compile_clause_action(g, ri, ci, c, program):
         if action.type == "break":
             # omitted error checks
             g.o("ctx_advance(ctx);")
-            g.o('DBG_PRINTF("advance to pos %d\\n", ctx_get_position(ctx));')
+            g.o('DBG_PRINTF("advance to pos %" PRId64 "\\n", ctx_get_position(ctx));')
             balance_window_rules(g, ri, ri+1, program)
             g.o("goto RULE_START_r%d;" % (ri+1))
         elif action.type == "repeat":
             g.o("ctx_advance(ctx);")
-            g.o('DBG_PRINTF("advance to pos %d\\n", ctx_get_position(ctx));')
+            g.o('DBG_PRINTF("advance to pos %" PRId64 "\\n", ctx_get_position(ctx));')
             # if action.type is repeat, but outer expires, shouldn't that be an error?
             g.o("goto CONTINUE_r%d;" % ri)
         elif action.type == "restart-from-here":
-            g.o('DBG_PRINTF("restarting from current event at \\"%s\\" pos=%%d\\n", ctx_get_position(ctx));' % program.get_rule_name( int(action.label or ri)))
+            g.o('DBG_PRINTF("restarting from current event at \\"%s\\" pos=%%" PRId64 "\\n", ctx_get_position(ctx));' % program.get_rule_name( int(action.label or ri)))
             balance_window_rules(g, ri, int(action.label or 0), program)
             g.o("goto RULE_START_r%d;" % int(action.label or 0))
         elif action.type == "restart-from-next":
             g.o("ctx_advance(ctx);")
-            g.o('DBG_PRINTF("restarting from next event at \\"%s\\" pos=%%d\\n", ctx_get_position(ctx));' % program.get_rule_name( int(action.label or ri)))
-            g.o('DBG_PRINTF("advance to pos %d\\n", ctx_get_position(ctx));')
+            g.o('DBG_PRINTF("restarting from next event at \\"%s\\" pos=%%" PRId64 "\\n", ctx_get_position(ctx));' % program.get_rule_name( int(action.label or ri)))
+            g.o('DBG_PRINTF("advance to pos %"PRId64"\\n", ctx_get_position(ctx));')
             balance_window_rules(g, ri, int(action.label or 0), program)
             g.o("goto RULE_START_r%d;" % int(action.label or 0))
         elif action.type == "restart-from-start":
@@ -535,11 +544,14 @@ def preprocess(program):
             # also find fields that are yielded but never used in conditions
             if c.get('yield'):
                 for _yield in c['yield']:
-                    if var_type(_yield['dst']) == 'set' or var_type(_yield['dst']) == 'multiset':
+                    if var_type(_yield['dst']) in ('set', 'multiset', 'hll'):
                         for f in _yield.get('src', []):
                             preprocess_yield_term(program, f)
 
-    program.vars = list(vars)
+    groupby_vars = program.groupby.get('vars', []) if program.groupby else []
+    program.groupby_vars = groupby_vars
+
+    program.vars = list(vars | set(groupby_vars))
     program.no_rewind = is_no_rewind(program)
     program.has_window_rules = len(program.window_rule_ids) > 0
 
@@ -548,6 +560,7 @@ def preprocess(program):
         if r.get("entrypoint"):
             entrypoint_id = i
     program.entrypoint_id = entrypoint_id
+
 
 
 def is_no_rewind(program):
@@ -575,7 +588,7 @@ def compile_block(g, ri, r, program):
         return
 
     g.o("state->ri = %d;" % ri)
-    g.o('DBG_PRINTF("entering rule \\"%s\\" at pos %%d, timestamp %%" PRIu64 ", end_of_trail %%d\\n", ctx_get_position(ctx), timestamp, ctx_end_of_trail(ctx));' % (program.get_rule_name(ri)))
+    g.o('DBG_PRINTF("entering rule \\"%s\\" at pos %%" PRId64 ", timestamp %%" PRIu64 ", end_of_trail %%d\\n", ctx_get_position(ctx), timestamp, ctx_end_of_trail(ctx));' % (program.get_rule_name(ri)))
 
     if ri == 0 and program.has_window_rules:
         g.o("state->outers[0].id = -1;")
@@ -661,11 +674,14 @@ def gen_get_param_id(g, program):
 
 
 def gen_set_param(g, program):
-    with BRACES(g, "int match_set_param(int param_id, int value, kvids_t *ids)"):
+    with BRACES(g, "int match_set_param(int param_id, int value, kvids_t *ids, char *string_val, int string_val_len)"):
         with BRACES(g, "switch (param_id)"):
             for i, v in enumerate(program.vars):
                 if v.startswith('%'):
-                    g.o("case %d: ids->var_%s = value; break;" % (i, v.lstrip('%#')))
+                    g.o("case %d: ids->var_%s = value;" % (i, v.lstrip('%#')))
+                    g.o("ids->varstr_%s = string_val;" % (v.lstrip('%#'), ))
+                    g.o("ids->varstrlen_%s = string_val_len;" % (v.lstrip('%#'), ))
+                    g.o("break;")
         g.o("return -1;")
 
 
@@ -673,7 +689,11 @@ def gen_get_param_field(g, program):
     with BRACES(g, "char *match_get_param_field(int param_id)"):
         with BRACES(g, "switch (param_id)"):
             for i, v in enumerate(program.vars):
-                g.o("case %d: return \"%s\"; break;" % (i, program.var_fields[v]))
+                # most vars have inferred field; however you can have fields that
+                # are never used in conditions (yet yielded), hence they have
+                # no "type"
+                if v in program.var_fields:
+                    g.o("case %d: return \"%s\"; break;" % (i, program.var_fields[v]))
         g.o("return 0;")
 
 
@@ -771,6 +791,8 @@ def gen_structs(g, program):
         for v in program.vars:
             if var_type(v) == 'scalar':
                 g.o("int var_%s;" % strip_type(v))
+                g.o("char *varstr_%s;" % strip_type(v))
+                g.o("int varstrlen_%s;" % strip_type(v))
             elif var_type(v) == 'set':
                 g.o("Pvoid_t var_%s;" % strip_type(v))
             else:
@@ -822,6 +844,8 @@ def gen_db_init(g, program):
                 g.o("ids->var_%s = NULL;" % strip_type(v))
             elif var_type(v) == 'scalar':
                 g.o("ids->var_%s = -1;" % strip_type(v))
+                g.o("ids->varstr_%s = 0;" % strip_type(v))
+                g.o("ids->varstrlen_%s = 0;" % strip_type(v))
             else:
                 raise Exception('bad variable name %s' % v)
 
@@ -906,7 +930,7 @@ def compile(rules, includes, groupby, out=sys.stdout):
 
 
 def gen_external_function_declarations(g, program):
-    for fname, nargs in program.external_functions:
+    for fname, nargs in set(program.external_functions):
         args = ["char *", "int"]
         for narg in xrange(nargs):
             args.append("char *")
@@ -927,15 +951,13 @@ def gen_header(rules, groupby, out=sys.stdout):
     gen_structs(g, program)
 
     g.o("static inline bool match_no_rewind() { return %s; }" % ('true' if program.no_rewind else 'false'))
-
-    groupby_vars = groupby.get('vars', []) if groupby else []
     merge_results = groupby.get('merge_results', False) if groupby else False
-    g.o("static int match_num_groupby_vars = %d;" % len(groupby_vars))
+    g.o("static int match_num_groupby_vars = %d;" % len(program.groupby_vars))
     g.o("static int match_merge_results = %d;" % (1 if merge_results else 0))
-    g.o("static char *match_groupby_vars[] = {%s};" % ','.join(('"%s"' % v) for v in groupby_vars))
+    g.o("static char *match_groupby_vars[] = {%s};" % ','.join(('"%s"' % v) for v in program.groupby_vars))
     g.o("static char *match_groupby_array_param = %s;" % ('"%s"' % groupby.get('values') if groupby and 'values' in groupby else 'NULL'))
 
-    free_vars = set(program.vars) - set(groupby_vars)
+    free_vars = set(program.vars) - set(program.groupby_vars)
     g.o("static int match_num_free_vars = %d;" % len(free_vars))
     g.o("static char *match_free_vars[] = {%s};" % ','.join(('"%s"' % v) for v in free_vars))
 

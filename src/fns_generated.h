@@ -73,7 +73,7 @@ size_t match_get_result_size();
  * parameters passed from outside.
  */
 int match_get_param_id(const char *param);
-int match_set_param(int param_id, int value, kvids_t *ids);
+int match_set_param(int param_id, int value, kvids_t *ids, char *val_str, int val_str_len);
 int match_set_list_param(int param_id, Pvoid_t value, kvids_t *ids);
 char *match_get_param_field(int param_id);
 

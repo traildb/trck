@@ -427,6 +427,10 @@ def p_action_yield_multiset_tuple(p):
     """ yield_var : ids TO MULTISET """
     p[0] = {'dst': p[3], 'src': p[1]}
 
+def p_action_yield_hll_tuple(p):
+    """ yield_var : ids TO HLL """
+    p[0] = {'dst': p[3], 'src': p[1]}
+
 def p_ids(p):
     """ids : ids COMMA yieldable
              | yieldable """
@@ -468,6 +472,10 @@ def p_arglist(p):
 def p_arg_id(p):
     """ arg : ID """
     p[0] = {'_k': 'field', 'name': p[1]}
+
+def p_arg_scalar(p):
+    """ arg : SCALAR """
+    p[0] = {'_k': 'param', 'name': p[1]}
 
 def p_arg_fcall(p):
     """ arg : fcall """
@@ -607,12 +615,6 @@ def compile_tr(text):
     convert_transitions(flat_rules)
 
     if 'groupby' in result:
-        vf = get_var_fields(flat_rules)
-        for v in result['groupby'].get('vars', []):
-            if v not in vf:
-                raise ParseError(message='Cannot infer field for a variable (unused variable?): %s' % v,
-                                 lineno=result['groupby'].get('lineno', -1),
-                                 lexpos=result['groupby'].get('lexpos', -1))
         return { 'rules' : flat_rules, 'groupby': result['groupby']}
     else:
         return {'rules' : flat_rules}

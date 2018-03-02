@@ -37,7 +37,8 @@
 #include "ctx.h"
 #include "db.h"
 
-#define MAX_STRING_LEN 1024 * 100
+#define MAX_STRING_LEN 1024 * 1024 * 100
+#define MIN(a,b) (((a)<(b))?(a):(b))
 
 #define MAX_TIMESTAMP 0xfffffffffffffffe
 #define TRAIL_BUFSIZE 2000000
@@ -75,6 +76,11 @@ void match_timestamp_only(timestamp_t timestamp,
     match_trail(state, results, &ids, &ctx);
 }
 
+/*
+ * Note that after calling this, JSON object `params` internal memory is
+ * referenced by `ids`. Therefore `params` object should not be freed before
+ * `ids`.
+ */
 void set_params_from_json(json_object *params, kvids_t *ids, db_t *db)
 {
     if (match_num_free_vars && params == NULL)
@@ -97,7 +103,7 @@ void set_params_from_json(json_object *params, kvids_t *ids, db_t *db)
 
         if (field_id < 0) {
             DBG_PRINTF("cannot find field %s in the traildb", field);
-            match_set_param(match_get_param_id(param_name), -1, ids);
+            match_set_param(match_get_param_id(param_name), -1, ids, 0, 0);
             continue;
         }
 
@@ -111,7 +117,9 @@ void set_params_from_json(json_object *params, kvids_t *ids, db_t *db)
 
             match_set_param(match_get_param_id(param_name),
                             scalar_to_local(db, field_id, value, value_length),
-                            ids);
+                            ids,
+                            (char *)value,
+                            value_length);
         } else
         if (param_name[0] == '#') {
             DBG_PRINTF("parsing '%s' set from json params\n", param_name);
@@ -264,6 +272,9 @@ void print_trail(ctx_t *ctx)
 /*
  * Helper function to run match for a given groupby value; s_in is initial state
  * (can be NULL). Assumes ctx and ids to be initialized with db-wide values.
+ *
+ * This also adds a reference to memory owned by `gi` to `ids`, therefore `ids`
+ * should be freed before `gi`.
  */
 void run_groupby_match(int groupby_idx,
                        state_t *s_in, groupby_info_t *gi,
@@ -294,7 +305,11 @@ void run_groupby_match(int groupby_idx,
                     gi->var_names[i], tuple[i].id, param_ids[i]);
 
         if (gi->var_names[i][0] == '%')
-            match_set_param(param_ids[i], tuple[i].id, ids);
+            match_set_param(param_ids[i],
+                            tuple[i].id,
+                            ids,
+                            gi->tuples[groupby_idx * gi->num_vars + i].str,
+                            gi->tuples[groupby_idx * gi->num_vars + i].len);
         else if (gi->var_names[i][0] == '#')
             match_set_list_param(param_ids[i], tuple[i].id_set, ids);
         else
@@ -375,11 +390,12 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
     j128m_init(states);
 
 
-    __uint128_t *window_cookies = 0;
+    __uint128_t *window_ids = 0;
     uint64_t num_windows = 0;
 
     if (window_set)
-        window_cookies = window_set_get_cookies(window_set, &num_windows);
+        // This is a list of cookies, unless there's a 4th id column, in which case it's a list of ids.
+        window_ids = window_set_get_ids(window_set, &num_windows);
 
     /*
      * For each OpenMP thread, we keep a separate results
@@ -431,16 +447,18 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
         int param_ids[gi->num_vars];
 
         for (int j = 0; j < gi->num_vars; j++) {
-            tdb_field groupby_field_id;
-            tdb_error res = tdb_get_field(db.db, gi->var_fields[j],
-                                          &groupby_field_id);
+            tdb_field groupby_field_id = -1;
 
-            if (res) {
-                fprintf(stderr, "WARNING: groupby field %s is not defined for this traildb: %s %d\n",
-                gi->var_fields[j], traildb_path, groupby_field_id);
-                groupby_field_id = -1;
+            if (gi->var_fields[j]) {
+                tdb_error res = tdb_get_field(db.db, gi->var_fields[j],
+                                              &groupby_field_id);
+
+                if (res) {
+                    fprintf(stderr, "WARNING: groupby field %s is not defined for this traildb: %s %d\n",
+                    gi->var_fields[j], traildb_path, groupby_field_id);
+                    groupby_field_id = -1;
+                }
             }
-
             field_ids[j] = groupby_field_id;
             param_ids[j] = match_get_param_id(gi->var_names[j]);
         }
@@ -506,6 +524,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
         #pragma omp for schedule(static)
         for (uint64_t i = 0; i < num_trails; i++) {
             const uint8_t *cookie;
+            __uint128_t id = 0;
 
             uint64_t trail_id = 0;
 
@@ -513,20 +532,27 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
             uint64_t window_end = 0;
 
             if (window_set) {
-                if (tdb_get_trail_id(db.db, (uint8_t *)&window_cookies[i], &trail_id) != 0)
-                    continue; /* cookie not found in the traildb */
-                else {
-                    cookie = (uint8_t *)&window_cookies[i];
-                }
+                // Convert the id -> cookie (simply returns the cookie if the last id column is not present).
+                __uint128_t out_cookie = 0;
 
-                window_set_get(window_set, cookie, &window_start, &window_end);
+                window_set_id_to_cookie(window_set, (uint8_t *)&window_ids[i], &out_cookie);
+                cookie = &out_cookie;
+                id = window_ids[i];
+
+                if (tdb_get_trail_id(db.db, cookie, &trail_id) != 0)
+                    continue; /* cookie not found in the traildb */
+
+                // We need to use the original id type (be it an id or cookie) to look up the start/end times, because
+                // that id type is what's stored in the maps.
+                window_set_get(window_set, (uint8_t *)&window_ids[i], &window_start, &window_end);
             } else {
                 trail_id = i;
                 cookie = tdb_get_uuid(db.db, trail_id);
+                id = *(__uint128_t *)cookie;
             }
 
             window_start = (window_start < min_ts) ? min_ts : window_start;
-            ctx_read_trail(&ctx, trail_id, window_start, window_end);
+            ctx_read_trail(&ctx, trail_id, id, window_start, window_end);
 
             /*
              * Get state vector for this cookie from global input
@@ -913,7 +939,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
     }
     j128m_free(states);
 
-    free(window_cookies);
+    free(window_ids);
 
     tend = time(NULL);
     fprintf(stderr, "finalizing states took %ld\n", tend-tstart);
@@ -941,10 +967,6 @@ void mk_groupby_info(groupby_info_t *gi, json_object *params,
     for (int i = 0; i < gi->num_vars; i++) {
         int param_id = match_get_param_id(gi->var_names[i]);
         gi->var_fields[i] = match_get_param_field(param_id);
-
-        CHECK(gi->var_fields[i],
-              "Can't figure out field for parameter %s (unused parameter?)",
-              gi->var_names[i]);
     }
 
     char *array_param = match_groupby_array_param;
@@ -997,7 +1019,7 @@ void mk_groupby_info(groupby_info_t *gi, json_object *params,
                     const char *str_value = json_object_get_string(jitem);
                     size_t str_len = json_object_get_string_len(jitem);
 
-                    tuples[j * gi->num_vars + f].len = (uint64_t) str_len;
+                    tuples[j * gi->num_vars + f].len = MIN((uint64_t) str_len, MAX_STRING_LEN);
                     tuples[j * gi->num_vars + f].str = strndup(str_value, MAX_STRING_LEN);
 
                 } else
@@ -1020,7 +1042,7 @@ void mk_groupby_info(groupby_info_t *gi, json_object *params,
 
                         const char *str_value = json_object_get_string(jsetitem);
                         size_t str_len = json_object_get_string_len(jsetitem);
-                        string_set[k].len = (uint64_t) str_len;
+                        string_set[k].len = MIN((uint64_t) str_len, MAX_STRING_LEN);
                         string_set[k].str = strndup(str_value, MAX_STRING_LEN);
                     }
 
