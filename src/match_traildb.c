@@ -536,7 +536,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
                 __uint128_t out_cookie = 0;
 
                 window_set_id_to_cookie(window_set, (uint8_t *)&window_ids[i], &out_cookie);
-                cookie = &out_cookie;
+                cookie = (uint8_t *)&out_cookie;
                 id = window_ids[i];
 
                 if (tdb_get_trail_id(db.db, cookie, &trail_id) != 0)
