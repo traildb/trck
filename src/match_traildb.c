@@ -68,7 +68,7 @@ void match_timestamp_only(timestamp_t timestamp,
         .current_event = &e,
         .cursor = NULL,
         .position = 0,
-        .cookie = cookie
+        .cookie = *(__uint128_t *)cookie
     };
 
     kvids_t ids;
