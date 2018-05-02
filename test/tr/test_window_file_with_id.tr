@@ -24,7 +24,7 @@ foreach %aeid in @arr
 --                      {"type":"cli", "timestamp":600, "advertisable_eid" : "a1"},
 --                      {"type":"cli", "timestamp":700, "advertisable_eid" : "a1"}
 --                    ]}],
---         "expected" : [{"%aeid" : "a1", "$match" : 5, "#timestamps" : ["200", "300", "400", "450", "500"], "&ttt" : {}}]
+--         "expected" : [{"%aeid" : "a1", "$match" : 10, "#timestamps" : ["200", "300", "400", "450", "500", "600"], "&ttt" : {}}]
 --     },
 --     {
 --         "desc" : "Test per-cookie windows on cookie trail spanning two traildbs + empty traildb",
@@ -39,16 +39,13 @@ foreach %aeid in @arr
 --                      {"type":"cli", "timestamp":450, "advertisable_eid" : "a1"}
 --                    ]},
 --                     {"defg" : []}],
---         "expected" : [{"%aeid" : "a1", "$match" : 4, "#timestamps" : ["200", "300", "400", "450"], "&ttt" : {}}]
+--         "expected" : [{"%aeid" : "a1", "$match" : 7, "#timestamps" : ["200", "300", "400", "450"], "&ttt" : {}}]
 --     },
 --     {
 --         "desc" : "Test per-cookie windows with multiple cookies",
 --         "trails" : [{"abcd" : [
 --                      {"type":"cli", "timestamp":10,  "advertisable_eid" : "a1"},
 --                      {"type":"cli", "timestamp":210, "advertisable_eid" : "a1"}],
----                     "efgh" : [
---                      {"type":"cli", "timestamp":120, "advertisable_eid" : "a1"},
---                      {"type":"cli", "timestamp":320, "advertisable_eid" : "a1"}],
 ---                     "ijkl" : [
 --                      {"type":"cli", "timestamp":230, "advertisable_eid" : "a1"},
 --                      {"type":"cli", "timestamp":430, "advertisable_eid" : "a1"}]
@@ -56,23 +53,17 @@ foreach %aeid in @arr
 --                     {"abcd" : [
 --                      {"type":"cli", "timestamp":510, "advertisable_eid" : "a1"},
 --                      {"type":"cli", "timestamp":610, "advertisable_eid" : "a1"}],
----                     "efgh" : [
---                      {"type":"cli", "timestamp":620, "advertisable_eid" : "a1"},
---                      {"type":"cli", "timestamp":720, "advertisable_eid" : "a1"}],
 ---                     "ijkl" : [
 --                      {"type":"cli", "timestamp":730, "advertisable_eid" : "a1"},
 --                      {"type":"cli", "timestamp":830, "advertisable_eid" : "a1"}]
 --                    }],
---         "expected" : [{"%aeid" : "a1", "$match" : 6, "#timestamps" : ["210", "320", "430", "510", "620", "730"], "&ttt" : {}}]
+--         "expected" : [{"%aeid" : "a1", "$match" : 6, "#timestamps" : ["210", "430", "510", "610", "730"], "&ttt" : {}}]
 --     },
 --     {
 --         "desc" : "Test per-cookie windows with multiple cookies, one cookie has no filter set",
 --         "trails" : [{"abcd" : [
 --                      {"type":"cli", "timestamp":10,  "advertisable_eid" : "a1"},
 --                      {"type":"cli", "timestamp":210, "advertisable_eid" : "a1"}],
----                     "efgh" : [
---                      {"type":"cli", "timestamp":120, "advertisable_eid" : "a1"},
---                      {"type":"cli", "timestamp":320, "advertisable_eid" : "a1"}],
 ---                     "ijkl1" : [
 --                      {"type":"cli", "timestamp":230, "advertisable_eid" : "a1"},
 --                      {"type":"cli", "timestamp":430, "advertisable_eid" : "a1"}]
@@ -80,14 +71,11 @@ foreach %aeid in @arr
 --                     {"abcd" : [
 --                      {"type":"cli", "timestamp":510, "advertisable_eid" : "a1"},
 --                      {"type":"cli", "timestamp":610, "advertisable_eid" : "a1"}],
----                     "efgh" : [
---                      {"type":"cli", "timestamp":620, "advertisable_eid" : "a1"},
---                      {"type":"cli", "timestamp":720, "advertisable_eid" : "a1"}],
 ---                     "ijkl1" : [
 --                      {"type":"cli", "timestamp":730, "advertisable_eid" : "a1"},
 --                      {"type":"cli", "timestamp":830, "advertisable_eid" : "a1"}]
 --                    }],
---         "expected" : [{"%aeid" : "a1", "$match" : 4, "#timestamps" : ["210", "320", "510", "620"], "&ttt" : {}}]
+--         "expected" : [{"%aeid" : "a1", "$match" : 4, "#timestamps" : ["210", "510", "610"], "&ttt" : {}}]
 --     },
 --     {
 --         "desc" : "Test per-cookie windows with a window that filters everything out",
@@ -98,10 +86,6 @@ foreach %aeid in @arr
 --                     {"abcd" : [
 --                      {"type":"cli", "timestamp":1000, "advertisable_eid" : "a1"},
 --                      {"type":"cli", "timestamp":2100, "advertisable_eid" : "a1"}]
---                     },
---                     {"efgh" : [
---                      {"type":"cli", "timestamp":1, "advertisable_eid" : "a1"},
---                      {"type":"cli", "timestamp":2, "advertisable_eid" : "a1"}]
 --                     }],
 --         "expected" : [{"%aeid" : "a1", "$match" : 0, "#timestamps" : [], "&ttt" : {}}]
 --     },
@@ -110,9 +94,21 @@ foreach %aeid in @arr
 --         "trails" : [{"abcd" : [
 --                      {"type":"ttt", "timestamp":10,  "advertisable_eid" : "a1"},
 --                      {"type":"ttt", "timestamp":210, "advertisable_eid" : "a1"},
---                      {"type":"ttt", "timestamp":240, "advertisable_eid" : "a1"}]
---                     }],
---         "expected" : [{"%aeid" : "a1", "$match" : 0, "#timestamps" : [], "&ttt" : {"61626364000000000000000000000000,600,200" : 2}}]
+--                      {"type":"ttt", "timestamp":240, "advertisable_eid" : "a1"},
+--                      {"type":"ttt", "timestamp":350, "advertisable_eid" : "a1"}]
+--                     },
+--                     {"ijkl": [
+--                      {"type":"ttt", "timestamp":410, "advertisable_eid" : "a1"}
+--                     ]
+--                     }
+--         ],
+--         "expected" : [
+--             {"%aeid" : "a1", "$match" : 0, "#timestamps" : [], "&ttt" : {
+--                  "71626364000000000000000000000000,600,200": 3,
+--                  "75666768000000000000000000000000,700,300": 1,
+--                  "796a6b6c000000000000000000000000,800,400": 1
+--             }}
+--         ]
 --     }
 -- ],
 -- "params" : {"@arr" : [["a1"]]}
