@@ -12,7 +12,7 @@
 typedef uint64_t timestamp_t;
 
 void print_trails(char **traildb_paths, int num_paths, Pvoid_t cookies) {
-    printf("[\n");
+    printf("[");
 
     for (int ti = 0; ti < num_paths; ti++) {
         tdb *db = tdb_init();
@@ -21,7 +21,7 @@ void print_trails(char **traildb_paths, int num_paths, Pvoid_t cookies) {
 
         int num_fields = tdb_num_fields(db);
 
-        printf("{\n");
+        printf("{");
 
         int num_trails = tdb_num_trails(db);
         bool found_cookie = false;
@@ -47,17 +47,17 @@ void print_trails(char **traildb_paths, int num_paths, Pvoid_t cookies) {
                     printf(",\"%s\": ", (const char *)hexcookie);
                 }
 
-                printf("[\n");
+                printf("[");
                 int ei = 0;
                 while ((event = tdb_cursor_next(cursor))) {
                     if (ei == 0) {
-                        printf("{\n");
+                        printf("{");
                     } else {
-                        printf(",{\n");
+                        printf(",{");
                     }
 
                     timestamp_t ts = (timestamp_t)event->timestamp;
-                    printf("\"timestamp\": %" PRIu64 ",\n", ts);
+                    printf("\"timestamp\": %" PRIu64 ",", ts);
 
                     for (int k = 1; k < num_fields; k++) {
                         const char *field_name = tdb_get_field_name(db, k);
@@ -79,24 +79,24 @@ void print_trails(char **traildb_paths, int num_paths, Pvoid_t cookies) {
 
                             // Add the closing quote for the field_value.
                             if (k == num_fields - 1) {
-                                printf("\"\n");
+                                printf("\"");
                             } else {
-                                printf("\",\n");
+                                printf("\",");
                             }
                         }
 
                     }
-                    printf("}\n");
+                    printf("}");
                     ei++;
                 }
-                printf("]\n");
+                printf("]");
             }
         }
 
         if (ti == num_paths - 1) {
-            printf("}\n");
+            printf("}");
         } else {
-            printf("},\n");
+            printf("},");
         }
 
         tdb_close(db);
