@@ -67,14 +67,10 @@ void print_trails(char **traildb_paths, int num_paths, Pvoid_t cookies) {
                             printf("\"%s\": \"", field_name);
 
                             // Print each character individually, skipping over quotes.
-                            const char *fvp = field_value;
-                            while (*fvp) {
-                                if (*fvp == '"') {
-                                    fvp++;
-                                    continue;
+                            for (uint64_t fi = 0; fi < len; fi++) {
+                                if (field_value[fi] != '"') {
+                                    putchar(field_value[fi]);
                                 }
-                                putchar(*fvp);
-                                fvp++;
                             }
 
                             // Add the closing quote for the field_value.
