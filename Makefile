@@ -2,7 +2,7 @@ VERSION?=$(shell git describe --long --abbrev=5 --match "v*" | perl -ple 's/^v((
 
 INCLUDEPATH=-Ideps/msgpack-c/include -I/usr/local/include
 
-all: src/parsetab.py lib/libtrck.a bin/gettrail bin/gettrail_tdb
+all: src/parsetab.py lib/libtrck.a bin/gettrail bin/gettrail_tdb bin/gettrail_print
 
 .PHONY: clean install all
 
