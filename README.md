@@ -96,6 +96,7 @@ You can also apply filters to traildb to select events a cookies to process. The
 
 * field filters. You can set field filter by passing `--filter` flag to a compiled `trck` program. Filter format TBD. Same filter will be applied to every trail.
 * time window filters. You can pass a path to a csv file using `--window-file` flag for a compiled `trck` program. Every line of the file contains 3 comma separated items: `uuid`, `start_timestamp` and `end_timestamp`. For every trail with specified `uuid`, events having timestamp that doesn't satisfy `start_timestamp <= X <= end_timestamp` are ignored. Trails that don't have an entry in the file are ignored entirely.
+* uuid exclude filters. You can pass a path to a plain file using `--exclude-file` for a compiled `trck` program. Every line of the file must contain a `uuid`. UUIDs found on this file will be ignored.
 
 ### Multicore support
 
@@ -309,7 +310,7 @@ foreach %aeid,%seid in @arr merged results
 
 #### Counting things: yield to a counter
 
-Simplest form of `yield` is 
+Simplest form of `yield` is
 ```haskell
 yield $counter
 ```
@@ -383,7 +384,7 @@ The HLL is encoded as follows:
 2) HLL version:
     0 = Empty
     1 = Non-empty
-3) HLL run-length encoded bins, RLE pairs can be stored in two or three bytes, 
+3) HLL run-length encoded bins, RLE pairs can be stored in two or three bytes,
    if the MSB is set, then two bytes were used to store the length.
 ```
 
