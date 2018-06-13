@@ -31,7 +31,7 @@ install: msgpack all
 	chmod +x $(addprefix $(bindir), /trck)
 	#cp bin/gettrail bin/gettrail_tdb $(bindir)/
 
-CSRCS = foreach_util.c mempool.c traildb_filter.c distinct.c utf8_check.c results_json.c results_msgpack.c utils.c judy_128_map.c window_set.c ctx.c db.c hyperloglog.c xxhash/xxhash.c judy_str_map.c
+CSRCS = foreach_util.c mempool.c traildb_filter.c distinct.c utf8_check.c results_json.c results_msgpack.c utils.c judy_128_map.c window_set.c exclude_set.c ctx.c db.c hyperloglog.c xxhash/xxhash.c judy_str_map.c
 COBJS  = $(addprefix lib/, $(notdir $(patsubst %.c,%.o,$(CSRCS))))
 
 msgpack:

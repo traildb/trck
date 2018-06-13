@@ -75,6 +75,12 @@ for ((x=0; x<$NUM_TESTS; x += 1 )) do
         WINDOW_FILE_ARG=""
     fi
 
+    if [ -f $SOURCE.exclude.csv ]; then
+        EXCLUDE_FILE_ARG="--exclude-file $SOURCE.exclude.csv"
+    else
+        EXCLUDE_FILE_ARG=""
+    fi
+
     FILTER=$(cat $TEST | jq -r ".tests | .[$x] | .filter")
     if [ "$FILTER" == "null" ]; then
         FILTER=""
@@ -106,10 +112,12 @@ for ((x=0; x<$NUM_TESTS; x += 1 )) do
     set +e
     if [ $DEBUG -eq 1 ] ; then
         echo $BIN --filter '"$FILTER"' $PARAM_ARG $DBS
-        $BIN --filter "$FILTER" $PARAM_ARG $FMT_ARG $WINDOW_FILE_ARG $DBS | tee $OUTFILE
+        $BIN --filter "$FILTER" $PARAM_ARG $FMT_ARG $WINDOW_FILE_ARG $EXCLUDE_FILE_ARG $DBS 2>/error.out | tee $OUTFILE
     else
-        $BIN --filter "$FILTER" $PARAM_ARG $FMT_ARG $WINDOW_FILE_ARG $DBS 2>/dev/null >$OUTFILE
+        $BIN --filter "$FILTER" $PARAM_ARG $FMT_ARG $WINDOW_FILE_ARG $EXCLUDE_FILE_ARG $DBS 2>/error.out >$OUTFILE
     fi
+    cat /error.out
+
     ERRCODE=$?
     set -e
     if [ $ERRCODE -ne 0 ]  ; then
