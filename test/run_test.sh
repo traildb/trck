@@ -112,11 +112,10 @@ for ((x=0; x<$NUM_TESTS; x += 1 )) do
     set +e
     if [ $DEBUG -eq 1 ] ; then
         echo $BIN --filter '"$FILTER"' $PARAM_ARG $DBS
-        $BIN --filter "$FILTER" $PARAM_ARG $FMT_ARG $WINDOW_FILE_ARG $EXCLUDE_FILE_ARG $DBS 2>/error.out | tee $OUTFILE
+        $BIN --filter "$FILTER" $PARAM_ARG $FMT_ARG $WINDOW_FILE_ARG $EXCLUDE_FILE_ARG $DBS | tee $OUTFILE
     else
-        $BIN --filter "$FILTER" $PARAM_ARG $FMT_ARG $WINDOW_FILE_ARG $EXCLUDE_FILE_ARG $DBS 2>/error.out >$OUTFILE
+        $BIN --filter "$FILTER" $PARAM_ARG $FMT_ARG $WINDOW_FILE_ARG $EXCLUDE_FILE_ARG $DBS 2>/dev/null >$OUTFILE
     fi
-    cat /error.out
 
     ERRCODE=$?
     set -e
