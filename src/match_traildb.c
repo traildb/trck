@@ -1158,9 +1158,6 @@ int parse_args(int argc, char **argv,
                char **window_file,
                char **exclude_file)
 {
-
-    fprintf(stderr, "parsing args");
-
     *params_config_file = 0;
     *window_file = 0;
     *exclude_file = 0;

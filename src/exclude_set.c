@@ -15,9 +15,9 @@ typedef struct exclude_set_t {
 } exclude_set_t;
 
 void free_exclude_set(exclude_set_t *s) {
-    if (s) {
+    if (s)
         j128m_free(&s->uuids);
-    }
+
     free(s);
 }
 
@@ -34,18 +34,14 @@ exclude_set_t *parse_exclude_set(const char *path) {
     uint64_t lineno = 1;
     while (fgets(buf, sizeof(buf), f)) {
         char *pbuf = buf;
-
-        int nt = 0;
-
         __uint128_t cookie = 0;
 
         CHECK(0 == tdb_uuid_raw((uint8_t *)pbuf, (uint8_t *)&cookie),
               "invalid format on line %" PRIu64 " in exclude file %s (should be uuid)",
               lineno, path);
 
-        if (cookie) {
+        if (cookie)
             *j128m_insert(&tmp_res.uuids, cookie) = 1;
-        }
 
         lineno++;
     }
@@ -62,13 +58,13 @@ exclude_set_t *parse_exclude_set(const char *path) {
     return res;
 }
 
-int exclude_set_contains(exclude_set_t *set, const uint8_t *uuid) {
+int exclude_set_contains(const exclude_set_t *set, const uint8_t *uuid) {
     __uint128_t idx = *(__uint128_t *)uuid;
     Word_t *r = j128m_get(&set->uuids, idx);
     return r != NULL ? *r == 1 : 0;
 }
 
-void dump_exclude_set(exclude_set_t *res) {
+void dump_exclude_set(const exclude_set_t *res) {
     __uint128_t idx = 0;
     PWord_t pv = NULL;
     j128m_find(&res->uuids, &pv, &idx);
