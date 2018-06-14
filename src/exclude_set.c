@@ -34,14 +34,14 @@ exclude_set_t *parse_exclude_set(const char *path) {
     uint64_t lineno = 1;
     while (fgets(buf, sizeof(buf), f)) {
         char *pbuf = buf;
-        __uint128_t cookie = 0;
+        __uint128_t uuid = 0;
 
-        CHECK(0 == tdb_uuid_raw((uint8_t *)pbuf, (uint8_t *)&cookie),
+        CHECK(0 == tdb_uuid_raw((uint8_t *)pbuf, (uint8_t *)&uuid),
               "invalid format on line %" PRIu64 " in exclude file %s (should be uuid)",
               lineno, path);
 
-        if (cookie)
-            *j128m_insert(&tmp_res.uuids, cookie) = 1;
+        if (uuid)
+            *j128m_insert(&tmp_res.uuids, uuid) = 1;
 
         lineno++;
     }
