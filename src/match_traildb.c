@@ -1113,13 +1113,13 @@ int run_query(char **traildb_paths, int num_paths,
     results_t *results = malloc(num_results * sizeof(results_t));
     memset(results, 0, num_results * sizeof(results_t));
 
-    window_set_t *window_set = 0;
+    window_set_t *window_set = NULL;
 
     if (window_file) {
         window_set = parse_window_set(window_file);
     }
 
-    exclude_set_t *exclude_set = 0;
+    exclude_set_t *exclude_set = NULL;
 
     if (exclude_file) {
         exclude_set = parse_exclude_set(exclude_file);
