@@ -2,7 +2,7 @@ VERSION?=$(shell git describe --long --abbrev=5 --match "v*" | perl -ple 's/^v((
 
 INCLUDEPATH=-Ideps/msgpack-c/include -I/usr/local/include
 
-all: src/parsetab.py lib/libtrck.a bin/gettrail bin/gettrail_tdb
+all: src/parsetab.py lib/libtrck.a bin/gettrail bin/gettrail_tdb bin/gettrail_print
 
 .PHONY: clean install all
 
@@ -31,7 +31,7 @@ install: msgpack protobuf all
 	chmod +x $(addprefix $(bindir), /trck)
 	#cp bin/gettrail bin/gettrail_tdb $(bindir)/
 
-CSRCS = foreach_util.c mempool.c traildb_filter.c distinct.c utf8_check.c results_json.c results_msgpack.c utils.c judy_128_map.c window_set.c ctx.c db.c hyperloglog.c xxhash/xxhash.c judy_str_map.c
+CSRCS = foreach_util.c mempool.c traildb_filter.c distinct.c utf8_check.c results_json.c results_msgpack.c utils.c judy_128_map.c window_set.c exclude_set.c ctx.c db.c hyperloglog.c xxhash/xxhash.c judy_str_map.c
 COBJS  = $(addprefix lib/, $(notdir $(patsubst %.c,%.o,$(CSRCS))))
 
 protobuf:
@@ -53,6 +53,9 @@ lib/libtrck.a: $(COBJS)
 
 bin/gettrail: src/gettrail.c
 		$(CC) -std=c99  -O3 -g -Wall -Wno-unused-variable -Wno-unused-label -DDEBUG=$(DEBUG) $(INCLUDEPATH) $^ -ltraildb -lJudy -lcurl -ltraildb -ljson-c -o $@
+
+bin/gettrail_print: src/gettrail_print.c
+		$(CC) -std=c99  -O3 -g -Wall -Wno-unused-variable -Wno-unused-label -DDEBUG=$(DEBUG) $(INCLUDEPATH) $^ -ltraildb -lJudy -lcurl -ltraildb -o $@
 
 bin/gettrail_tdb: src/gettrail_tdb.c src/traildb_filter.c
 	$(CC) -std=c99  -O3 -g -Wall -DDEBUG=$(DEBUG) $(INCLUDEPATH) $^ -ltraildb -lJudy -lcurl -ltraildb -ljson-c -o $@

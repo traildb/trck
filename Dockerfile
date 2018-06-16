@@ -1,6 +1,7 @@
 FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y\
+    libcurl4-gnutls-dev \
     libcmph-dev \
     libc6-dev \
     libjemalloc-dev \
@@ -26,7 +27,7 @@ RUN apt-get update && apt-get install -y\
     vim
 
 RUN pip3 install awscli
-RUN pip install boto msgpack-python
+RUN pip install boto msgpack-python future
 
 # Install dependencies
 RUN apt-get update && apt-get install -y\
@@ -49,9 +50,6 @@ RUN cd /opt &&\
     git clone https://github.com/traildb/traildb-python &&\
     cd traildb-python &&\
     python setup.py install
-
-# Install adroll-s3tools
-#RUN apt-get update && apt-get install -y adroll-s3tools
 
 RUN mkdir /opt/trck
 COPY . /opt/trck

@@ -35,6 +35,7 @@
 #include "results_protobuf.h"
 #include "utils.h"
 #include "window_set.h"
+#include "exclude_set.h"
 #include "ctx.h"
 #include "db.h"
 
@@ -69,7 +70,7 @@ void match_timestamp_only(timestamp_t timestamp,
         .current_event = &e,
         .cursor = NULL,
         .position = 0,
-        .cookie = cookie
+        .cookie = *(__uint128_t *)cookie
     };
 
     kvids_t ids;
@@ -370,7 +371,7 @@ void run_groupby_match(int groupby_idx,
 
 int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
                        json_object *params, results_t *results,
-                       const char *filter, window_set_t *window_set)
+                       const char *filter, window_set_t *window_set, exclude_set_t *exclude_set)
 {
     #ifdef _OPENMP
     size_t num_threads = omp_get_max_threads();
@@ -537,7 +538,7 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
                 __uint128_t out_cookie = 0;
 
                 window_set_id_to_cookie(window_set, (uint8_t *)&window_ids[i], &out_cookie);
-                cookie = &out_cookie;
+                cookie = (uint8_t *)&out_cookie;
                 id = window_ids[i];
 
                 if (tdb_get_trail_id(db.db, cookie, &trail_id) != 0)
@@ -551,6 +552,9 @@ int run_groupby_query2(char **traildb_paths, int num_paths, groupby_info_t *gi,
                 cookie = tdb_get_uuid(db.db, trail_id);
                 id = *(__uint128_t *)cookie;
             }
+
+            if (exclude_set && exclude_set_contains(exclude_set, cookie))
+                continue; // If the uuid is in the exclude_set skip its trail
 
             window_start = (window_start < min_ts) ? min_ts : window_start;
             ctx_read_trail(&ctx, trail_id, id, window_start, window_end);
@@ -1092,7 +1096,8 @@ typedef enum output_format_t {
 int run_query(char **traildb_paths, int num_paths,
               const char *params_config_file,
               const char *filter, output_format_t format,
-              const char *window_file)
+              const char *window_file,
+              const char *exclude_file)
 {
     json_object *json_params = NULL;
 
@@ -1110,14 +1115,20 @@ int run_query(char **traildb_paths, int num_paths,
     results_t *results = malloc(num_results * sizeof(results_t));
     memset(results, 0, num_results * sizeof(results_t));
 
-    window_set_t *window_set = 0;
+    window_set_t *window_set = NULL;
 
     if (window_file) {
         window_set = parse_window_set(window_file);
     }
 
+    exclude_set_t *exclude_set = NULL;
+
+    if (exclude_file) {
+        exclude_set = parse_exclude_set(exclude_file);
+    }
+
     run_groupby_query2(traildb_paths, num_paths, &gi, json_params,
-                       results, filter, window_set);
+                       results, filter, window_set, exclude_set);
 
     switch (format) {
         case FORMAT_JSON:
@@ -1144,6 +1155,7 @@ int run_query(char **traildb_paths, int num_paths,
 
     free_groupby_info(&gi);
     free_window_set(window_set);
+    free_exclude_set(exclude_set);
     return 0;
 }
 
@@ -1152,10 +1164,12 @@ int parse_args(int argc, char **argv,
                char **params_config_file,
                char **filter,
                char **format,
-               char **window_file)
+               char **window_file,
+               char **exclude_file)
 {
     *params_config_file = 0;
     *window_file = 0;
+    *exclude_file = 0;
     *filter = 0;
     *format = 0;
 
@@ -1167,6 +1181,7 @@ int parse_args(int argc, char **argv,
             {"output-format", required_argument, 0,   'o' },
             {"filter",    required_argument, 0,   'f' },
             {"window-file",required_argument, 0,   'w' },
+            {"exclude-file",required_argument, 0,   'e' },
             {0,           0,                 0,    0 }
         };
 
@@ -1179,6 +1194,7 @@ int parse_args(int argc, char **argv,
           case 'p': *params_config_file = optarg; break;
           case 'f': *filter = optarg; break;
           case 'w': *window_file = optarg; break;
+          case 'e': *exclude_file = optarg; break;
           case 'o': *format = optarg; break;
       }
     }
@@ -1214,11 +1230,11 @@ void initialize() {
 
 int main(int argc, char **argv)
 {
-    char *params_config_file, *filter, *format, *window_file;
+    char *params_config_file, *filter, *format, *window_file, *exclude_file;
 
     int num_dbs = parse_args(argc, argv,
                              &params_config_file,
-                             &filter, &format, &window_file);
+                             &filter, &format, &window_file, &exclude_file);
 
     if (num_dbs == 0) {
         fprintf(stderr, "usage: %s TRAILDB_PATH [groupby FIELD]\n", argv[0]);
@@ -1235,7 +1251,8 @@ int main(int argc, char **argv)
               params_config_file,
               filter,
               parse_format(format),
-              window_file);
+              window_file,
+              exclude_file);
     finalize();
     return 0;
 }

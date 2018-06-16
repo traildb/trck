@@ -10,6 +10,10 @@
 #include "safeio.h"
 #include "utils.h"
 
+
+const unsigned char *utf8_check(const unsigned char *s);
+
+
 void msgpack_add_int(void *p, char *name, int64_t value) {
     msgpack_packer *pk = (msgpack_packer *)p;
 
@@ -191,8 +195,15 @@ void output_set(msgpack_packer *pk, set_t *value, int multiset) {
              *
              * You can get some weird looking string in the lexicon in msgpack.
              */
-            msgpack_pack_str(pk, strlen(lex_item) - 1);
-            msgpack_pack_str_body(pk, lex_item + 1, strlen(lex_item) - 1);
+            size_t lex_item_len;
+            const unsigned char *c = utf8_check((unsigned char *)lex_item);
+            if (c == NULL)
+                lex_item_len = strlen(lex_item);
+            else
+                lex_item_len = c - (const unsigned char *)lex_item;
+
+            msgpack_pack_str(pk, lex_item_len - 1);
+            msgpack_pack_str_body(pk, lex_item + 1, lex_item_len - 1);
             msgpack_pack_int(pk, *pv);
         } else {
             msgpack_pack_nil(pk);
