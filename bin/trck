@@ -20,14 +20,15 @@ def print_(s, level='info'):
 def make_absolute(x):
     return os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), x))
 
-LIBS = ["-ltraildb", make_absolute("../lib/libtrck.a"),
-        "-lcmph",
-        "-lm",
-        "-lJudy",
-        "-ljemalloc",
-        "-lmsgpackc",
-        "-ljson-c",
-        "-lprotobuf-c"]
+LIBS = [
+    "-ltraildb", make_absolute("../lib/libtrck.a"),
+    "-lcmph",
+    "-lm",
+    "-lJudy",
+    "-ljemalloc",
+    "-lmsgpackc",
+    "-ljson-c",
+]
 
 FLAGS = ["-std=c99",
         "-g",
@@ -261,9 +262,14 @@ def main():
                 if os.path.isfile(args.program_name + ".c"):
                     sources.append(args.program_name + ".c")
 
+                extra_libs = [('-l' + x) for x in (args.library or [])]
+
+                if args.proto:
+                    extra_libs.append('-lprotobuf-c')
+
                 if compile_method(sources, src_path, gen_path, args.output_file,
                                   use_openmp=args.use_openmp,
-                                  extra_libs=[('-l' + x) for x in (args.library or [])]) != 0:
+                                  extra_libs=extra_libs) != 0:
                     print_("Compilation failed", level='error')
                     sys.exit(1)
             finally:
