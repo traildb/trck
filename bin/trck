@@ -168,6 +168,14 @@ def main():
         print_(parser.format_usage(), level='error')
         sys.exit(1)
 
+    if args.proto:
+        # Check that protobuf is installed
+        try:
+            subprocess.check_call(['protoc', '--version'])
+        except (OSError, subprocess.CalledProcessError) as e:
+            print_("Protobuf not installed or not installed properly")
+            sys.exit(1)
+
     print_("Compiling %s" % args.program_name)
     t1 = time.time()
     try:
