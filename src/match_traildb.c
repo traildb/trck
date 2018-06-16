@@ -1009,7 +1009,7 @@ void mk_groupby_info(groupby_info_t *gi, json_object *params,
                   "%s is expected to be an array of arrays", array_param);
             CHECK(json_object_array_length(jtuple) == gi->num_vars,
                   "each element of %s is supposed to be a tuple of %d not %d",
-                  array_param, gi->num_vars, json_object_array_length(jtuple));
+                  array_param, gi->num_vars, (int) json_object_array_length(jtuple));
 
             /* for each item in this tuple */
             for (int f = 0; f < gi->num_vars; f++) {
