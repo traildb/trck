@@ -22,7 +22,7 @@ void free_exclude_set(exclude_set_t *s) {
 }
 
 exclude_set_t *parse_exclude_set(const char *path) {
-    char buf[250] = {0};
+    char buf[64] = {0};
 
     exclude_set_t tmp_res = {0};
 
@@ -35,6 +35,10 @@ exclude_set_t *parse_exclude_set(const char *path) {
     while (fgets(buf, sizeof(buf), f)) {
         char *pbuf = buf;
         __uint128_t uuid = 0;
+
+        CHECK(pbuf[32] == '\r' || pbuf[32] == '\n',
+              "invalid format on line %" PRIu64 " in exclude file %s (uuid must have a length of 16 bytes)",
+              lineno, path);
 
         CHECK(0 == tdb_uuid_raw((uint8_t *)pbuf, (uint8_t *)&uuid),
               "invalid format on line %" PRIu64 " in exclude file %s (should be uuid)",
@@ -53,7 +57,7 @@ exclude_set_t *parse_exclude_set(const char *path) {
 
     fprintf(stderr, "read %" PRIu64 " uuids from %s\n", j128m_num_keys(&tmp_res.uuids), path);
 
-    exclude_set_t *res = calloc(sizeof(exclude_set_t), 1);
+    exclude_set_t *res = malloc(sizeof(exclude_set_t));
     memcpy(res, &tmp_res, sizeof(exclude_set_t));
     return res;
 }
