@@ -32,6 +32,7 @@
 #include "distinct.h"
 #include "results_json.h"
 #include "results_msgpack.h"
+#include "results_protobuf.h"
 #include "utils.h"
 #include "window_set.h"
 #include "exclude_set.h"
@@ -1008,7 +1009,7 @@ void mk_groupby_info(groupby_info_t *gi, json_object *params,
                   "%s is expected to be an array of arrays", array_param);
             CHECK(json_object_array_length(jtuple) == gi->num_vars,
                   "each element of %s is supposed to be a tuple of %d not %d",
-                  array_param, gi->num_vars, json_object_array_length(jtuple));
+                  array_param, gi->num_vars, (int) json_object_array_length(jtuple));
 
             /* for each item in this tuple */
             for (int f = 0; f < gi->num_vars; f++) {
@@ -1087,7 +1088,8 @@ void free_groupby_info(groupby_info_t *gi)
 
 typedef enum output_format_t {
     FORMAT_JSON,
-    FORMAT_MSGPACK
+    FORMAT_MSGPACK,
+    FORMAT_PROTO
 } output_format_t;
 
 
@@ -1134,6 +1136,13 @@ int run_query(char **traildb_paths, int num_paths,
             break;
         case FORMAT_MSGPACK:
             output_msgpack(&gi, results);
+            break;
+        case FORMAT_PROTO:
+            CHECK(protobuf_enabled, "Program was not compiled with a .proto file," \
+                "therefore protobuf output is not supported with this executable." \
+                " Try specifying a proto file with --proto.");
+
+            output_proto(&gi, results);
             break;
         default:
             CHECK(0, "Unknown format");
@@ -1203,6 +1212,8 @@ output_format_t parse_format(char *format) {
         return FORMAT_MSGPACK;
     if (strcmp(format, "json") == 0)
         return FORMAT_JSON;
+    if (strcmp(format, "proto") == 0)
+        return FORMAT_PROTO;
 
     CHECK(0, "Incorrect format %s", format);
 }

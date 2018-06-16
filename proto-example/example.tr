@@ -1,0 +1,22 @@
+foreach %a, %b in @params
+    start ->
+        receive
+            type=%b -> wait
+            a=%a -> yield a, a to &w, quit
+            type in #w -> repeat
+            * -> quit
+
+    wait ->
+        receive
+            type='t1' -> yield a to #x, candidate
+            * -> yield type, a to ^v, repeat
+
+    candidate ->
+        receive
+            type='t2', timestamp >= %ts -> yield $y, yield a, type to #z, skip_dup
+            * -> yield a, a to &w, repeat
+
+    skip_dup ->
+        receive
+           * -> repeat
+        after 10m -> candidate

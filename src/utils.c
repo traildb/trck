@@ -62,10 +62,20 @@ void string_tuple_init(string_tuple_t *tuple)
     tuple->len = 0;
 }
 
+
+int string_tuple_size(char* index) {
+    int count = 1;
+    for (int i = 0; index[i] != '\0'; i++) {
+        if (index[i] ==  ',') count++;
+    }
+    return count;
+}
+
+
 /*
  * Tuple encoding is done as follows: most bytes are left as is, except
  * 0x00  -> 0xff 0xfe
- * ','   -> 0xff 0xfe
+ * ','   -> 0xff 0xfd
  * 0xff  -> 0xff 0xff
  */
 void string_tuple_append(char *val, int length, int type, string_tuple_t *tuple) {
@@ -294,4 +304,18 @@ void str_to_hex_str(char *dst, char *src, size_t size)
 
 void error(char *err) {
     CHECK(false, "error while %s", err);
+}
+
+
+int JSL_size(set_t *value) {
+    uint8_t index[MAXLINELEN];
+    index[0] = '\0';
+    Word_t *pv;
+    JSLF(pv, *value, index);
+    int count = 0;
+    while(pv) {
+        count++;
+        JSLN(pv, *value, index);
+    }
+    return count;
 }

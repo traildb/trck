@@ -34,6 +34,11 @@ install: msgpack all
 CSRCS = foreach_util.c mempool.c traildb_filter.c distinct.c utf8_check.c results_json.c results_msgpack.c utils.c judy_128_map.c window_set.c exclude_set.c ctx.c db.c hyperloglog.c xxhash/xxhash.c judy_str_map.c
 COBJS  = $(addprefix lib/, $(notdir $(patsubst %.c,%.o,$(CSRCS))))
 
+protobuf:
+	cd deps/protobuf && ./autogen.sh && ./configure && make && make install && ldconfig
+	cd deps/protobuf-c && ./autogen.sh && ./configure && make && make install
+	cd deps/protobuf/python && python setup.py build --cpp_implementation && python setup.py install --cpp_implementation
+
 msgpack:
 	cd deps/msgpack-c && cmake . && make && make install
 

@@ -11,20 +11,24 @@ import shutil
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '../src'))
 import trparser
 import fsm2c
+import proto_helpers
+
 
 def print_(s, level='info'):
-    sys.stdout.write("%s\n" % s)
+    sys.stderr.write("%s\n" % s)
 
 def make_absolute(x):
     return os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), x))
 
-LIBS = ["-ltraildb", make_absolute("../lib/libtrck.a"),
-        "-lcmph",
-        "-lm",
-        "-lJudy",
-        "-ljemalloc",
-        "-lmsgpackc",
-        "-ljson-c"]
+LIBS = [
+    "-ltraildb", make_absolute("../lib/libtrck.a"),
+    "-lcmph",
+    "-lm",
+    "-lJudy",
+    "-ljemalloc",
+    "-lmsgpackc",
+    "-ljson-c",
+]
 
 FLAGS = ["-std=c99",
         "-g",
@@ -126,6 +130,7 @@ def check_openmp_osx():
     except OSError:
         return False
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("program_name", help="program")
@@ -136,6 +141,8 @@ def main():
     parser.add_argument("--output-file", "-o", help="output path for compiled binary", default='matcher-traildb')
     parser.add_argument("--params-file", "-p", help="path to parameter file")
     parser.add_argument('--library', '-l', action='append', help="additional library to link to", default=[])
+    parser.add_argument("--proto", help="Path to proto file for results")
+    parser.add_argument("--no-validate-proto", help="Don't validate protobuf message against trck script", action='store_true', default=False)
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--dynamic", action="store_true", help="link dependencies dynamically (default)")
@@ -161,6 +168,14 @@ def main():
         print_(parser.format_usage(), level='error')
         sys.exit(1)
 
+    if args.proto:
+        # Check that protobuf is installed
+        try:
+            subprocess.check_call(['protoc', '--version'])
+        except (OSError, subprocess.CalledProcessError) as e:
+            print_("Protobuf not installed or not installed properly")
+            sys.exit(1)
+
     print_("Compiling %s" % args.program_name)
     t1 = time.time()
     try:
@@ -176,29 +191,57 @@ def main():
 
             gen_path = tempfile.mkdtemp()
             try:
+                src_path = make_absolute('../src')
+                program = fsm2c.make_ast(flat_rules["rules"], flat_rules.get('groupby'))
                 if args.gen_c:
-                    fsm2c.compile(flat_rules["rules"],
+                    fsm2c.compile(program,
                                   includes=['fns_imported.h',
                                             'out_traildb.h'],
-                                  groupby=flat_rules.get('groupby'),
                                   out=sys.stdout)
                     return
                 elif args.gen_h:
-                    fsm2c.gen_header(flat_rules["rules"],
+                    fsm2c.gen_header(program,
                                      groupby=flat_rules.get('groupby'),
                                      out=sys.stdout)
+                    return
                 else:
                     with open(os.path.join(gen_path, 'out_traildb.c'), 'w') as c_src:
-                        fsm2c.compile(flat_rules["rules"],
+                        fsm2c.compile(program,
                                       includes=['fns_imported.h',
                                                 'out_traildb.h'],
-                                      groupby=flat_rules.get('groupby'),
                                       out=c_src)
 
-                src_path = make_absolute('../src')
+                    if args.proto:
+                        proto_info = proto_helpers.ProtoInfo('trck', 'Result', args.proto)
+                        with open(os.path.join(gen_path, 'results_protobuf.c'), 'w') as proto_src:
+                            fsm2c.compile_proto(
+                                program,
+                                includes=[
+                                    proto_info.pb_header(basename=True),
+                                ],
+                                proto_info=proto_info,
+                                out=proto_src)
+
+                        subprocess.call([i for i in [
+                            "protoc",
+                            "--c_out={}".format(gen_path),
+                            # Generate the python stubs so we can dynamically
+                            # import the field descriptors for field validation
+                            None if args.no_validate_proto else "--python_out={}".format(gen_path),
+                            "--proto_path={}".format(src_path),
+                            "--proto_path={}".format(os.path.dirname(proto_info.path)),
+                            # Compile the following proto files and place them into gen_path
+                            os.path.basename(proto_info.path),
+                            "SetTuple.proto",
+                            "MultisetTuple.proto",
+                            "Hll.proto",
+                        ] if i is not None])
+
+                        if not args.no_validate_proto:
+                            proto_info.validate_fields(gen_path, program)
 
                 with open(os.path.join(gen_path, 'out_traildb.h'), 'w') as h_src:
-                    fsm2c.gen_header(flat_rules["rules"],
+                    fsm2c.gen_header(program,
                                      groupby=flat_rules.get('groupby'),
                                      out=h_src)
 
@@ -206,8 +249,18 @@ def main():
                 sources = [
                         j(src_path, "match_traildb.c"),
                         j(src_path, "statevec.c"),
-                        j(gen_path, "out_traildb.c")
+                        j(gen_path, "out_traildb.c"),
+                        # If args.proto is None, use src/results_protobuf.c
+                        # (Stub implementation) to prevent linker error
+                        j(gen_path if args.proto else src_path, "results_protobuf.c"),
                 ]
+                if args.proto:
+                    sources += [
+                        j(gen_path, proto_info.pb_src(basename=True)),
+                        j(gen_path, "SetTuple.pb-c.c"),
+                        j(gen_path, "MultisetTuple.pb-c.c"),
+                        j(gen_path, "Hll.pb-c.c"),
+                    ]
 
                 if args.static:
                     compile_method = compile_static
@@ -217,9 +270,14 @@ def main():
                 if os.path.isfile(args.program_name + ".c"):
                     sources.append(args.program_name + ".c")
 
+                extra_libs = [('-l' + x) for x in (args.library or [])]
+
+                if args.proto:
+                    extra_libs.append('-lprotobuf-c')
+
                 if compile_method(sources, src_path, gen_path, args.output_file,
                                   use_openmp=args.use_openmp,
-                                  extra_libs=[('-l' + x) for x in (args.library or [])]) != 0:
+                                  extra_libs=extra_libs) != 0:
                     print_("Compilation failed", level='error')
                     sys.exit(1)
             finally:
