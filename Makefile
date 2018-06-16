@@ -19,7 +19,7 @@ bindir=/usr/local/bin
 includedir?=/usr/include
 libdir?=/usr/lib
 
-install: msgpack protobuf all
+install: msgpack all
 	install -m 0755 -d $(datarootdir)/trck/src $(datarootdir)/trck/bin $(datarootdir)/trck/lib
 	install -m 0755 -d $(includedir)/xxhash
 	install -m 0644 -t $(datarootdir)/trck/src/ src/*.c src/*.py src/*.h
