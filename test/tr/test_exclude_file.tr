@@ -1,0 +1,40 @@
+foreach %aeid in @arr
+    start ->
+        receive
+            type = "cli", advertisable_eid = %aeid -> yield $match, yield cookie to #uuids
+            * -> repeat
+
+----- unit tests ----
+-- {"tests": [
+--     {
+--         "desc" : "Test exclusion of uuids",
+--         "trails" : [{
+--           "uuid1" : [
+--             {"type":"cli", "timestamp":10,  "advertisable_eid" : "a1"},
+--             {"type":"cli", "timestamp":210, "advertisable_eid" : "a1"}
+--           ],
+--           "uuid2" : [
+--             {"type":"cli", "timestamp":10, "advertisable_eid" : "a1"},
+--             {"type":"cli", "timestamp":220, "advertisable_eid" : "a1"}
+--           ],
+--           "uuid3" : [
+--             {"type":"cli", "timestamp":230, "advertisable_eid" : "a1"},
+--             {"type":"cli", "timestamp":250, "advertisable_eid" : "a1"},
+--             {"type":"cli", "timestamp":430, "advertisable_eid" : "a1"}
+--           ],
+--           "uuid4" : [
+--             {"type":"cli", "timestamp":610, "advertisable_eid" : "a1"},
+--             {"type":"cli", "timestamp":615, "advertisable_eid" : "a1"}
+--           ],
+--           "uuid5" : [
+--             {"type":"cli", "timestamp":620, "advertisable_eid" : "a1"},
+--             {"type":"cli", "timestamp":720, "advertisable_eid" : "a1"}
+--           ]
+--         }],
+--         "expected" : [
+--             {"%aeid" : "a1", "$match" : 6, "#uuids" : ["75756964320000000000000000000000", "75756964340000000000000000000000", "75756964350000000000000000000000"]}
+--         ]
+--     }
+-- ],
+-- "params" : {"@arr" : [["a1"]]}
+--}
