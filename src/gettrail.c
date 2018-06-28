@@ -53,7 +53,7 @@ struct json_object *get_trails(char **traildb_paths, int num_paths, Pvoid_t cook
                         const char *field_value = tdb_get_item_value(db, event->items[k-1], &len);
                         if(field_value != NULL)
                             json_object_object_add(jitem, field_name, json_object_new_string_len(field_value, len));
-                        
+
                     }
                     json_object_array_add(jarr, jitem);
                 }
@@ -111,5 +111,5 @@ int main(int argc, char **argv) {
     const char *json_string = json_object_to_json_string(res);
     printf("%s", json_string);
     json_object_put(res);
-    
+
 }
