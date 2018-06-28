@@ -51,6 +51,10 @@ void print_trails(char **traildb_paths, int num_paths, Pvoid_t cookies) {
                 printf("[");
                 int ei = 0;
                 while ((event = tdb_cursor_next(cursor))) {
+                    // We're using this seemingly bizarre combination of printing JSON and using the json-c
+                    // library because we want to:
+                    // 1) avoid the memory overhead of creating really long JSON arrays for the trails,
+                    // 2) while taking advantage of json-c's string escaping for the inner event objects
                     struct json_object *jitem = json_object_new_object();
 
                     if (ei != 0) {
