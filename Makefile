@@ -55,7 +55,7 @@ bin/gettrail: src/gettrail.c
 		$(CC) -std=c99  -O3 -g -Wall -Wno-unused-variable -Wno-unused-label -DDEBUG=$(DEBUG) $(INCLUDEPATH) $^ -ltraildb -lJudy -lcurl -ltraildb -ljson-c -o $@
 
 bin/gettrail_print: src/gettrail_print.c
-		$(CC) -std=c99  -O3 -g -Wall -Wno-unused-variable -Wno-unused-label -DDEBUG=$(DEBUG) $(INCLUDEPATH) $^ -ltraildb -lJudy -lcurl -ltraildb -o $@
+		$(CC) -std=c99  -O3 -g -Wall -Wno-unused-variable -Wno-unused-label -DDEBUG=$(DEBUG) $(INCLUDEPATH) $^ -ltraildb -lJudy -lcurl -ltraildb -ljson-c -o $@
 
 bin/gettrail_tdb: src/gettrail_tdb.c src/traildb_filter.c
 	$(CC) -std=c99  -O3 -g -Wall -DDEBUG=$(DEBUG) $(INCLUDEPATH) $^ -ltraildb -lJudy -lcurl -ltraildb -ljson-c -o $@

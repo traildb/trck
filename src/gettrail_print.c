@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <traildb.h>
 #include <Judy.h>
+#include <json-c/json.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -50,40 +51,30 @@ void print_trails(char **traildb_paths, int num_paths, Pvoid_t cookies) {
                 printf("[");
                 int ei = 0;
                 while ((event = tdb_cursor_next(cursor))) {
-                    if (ei == 0) {
-                        printf("{");
-                    } else {
-                        printf(",{");
+                    // We're using this seemingly bizarre combination of printing JSON and using the json-c
+                    // library because we want to:
+                    // 1) avoid the memory overhead of creating really long JSON arrays for the trails,
+                    // 2) while taking advantage of json-c's string escaping for the inner event objects
+                    struct json_object *jitem = json_object_new_object();
+
+                    if (ei != 0) {
+                        printf(",");
                     }
 
                     timestamp_t ts = (timestamp_t)event->timestamp;
-                    printf("\"timestamp\": %" PRIu64 ",", ts);
+                    json_object_object_add(jitem, "timestamp", json_object_new_int64(ts));
 
                     for (int k = 1; k < num_fields; k++) {
                         const char *field_name = tdb_get_field_name(db, k);
                         uint64_t len;
                         const char *field_value = tdb_get_item_value(db, event->items[k-1], &len);
-                        if(field_value != NULL) {
-                            printf("\"%s\": \"", field_name);
-
-                            // Print each character individually, skipping over quotes.
-                            for (uint64_t fi = 0; fi < len; fi++) {
-                                if (field_value[fi] != '"') {
-                                    putchar(field_value[fi]);
-                                }
-                            }
-
-                            // Add the closing quote for the field_value.
-                            if (k == num_fields - 1) {
-                                printf("\"");
-                            } else {
-                                printf("\",");
-                            }
-                        }
-
+                        if (field_value != NULL)
+                            json_object_object_add(jitem, field_name, json_object_new_string_len(field_value, len));
                     }
-                    printf("}");
+
+                    printf("%s", json_object_to_json_string(jitem));
                     ei++;
+                    json_object_put(jitem);
                 }
                 printf("]");
             }
